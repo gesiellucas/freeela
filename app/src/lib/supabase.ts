@@ -11,8 +11,11 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '⚠️ Supabase credentials not found. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file'
+  console.error(
+    '❌ ERRO: Credenciais do Supabase não configuradas!\n' +
+    'Crie um arquivo .env na pasta app/ com:\n' +
+    'VITE_SUPABASE_URL=https://seu-projeto.supabase.co\n' +
+    'VITE_SUPABASE_ANON_KEY=sua-anon-key'
   )
 }
 
@@ -34,9 +37,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
  */
 export async function getCurrentUser() {
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  return user
+    data: { session },
+  } = await supabase.auth.getSession()
+  return session?.user ?? null
 }
 
 /**
@@ -46,11 +49,16 @@ export async function getCurrentUserId(): Promise<string | null> {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('users')
     .select('id')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (error) {
+    console.error('Erro ao buscar user_id:', error)
+    return null
+  }
 
   return data?.id || null
 }
@@ -117,6 +125,18 @@ export async function getLeads(userId: string) {
     .from('leads')
     .select('*')
     .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+}
+
+/**
+ * Busca leads arquivados (declinados)
+ */
+export async function getArchivedLeads(userId: string) {
+  return supabase
+    .from('leads')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'lost')
     .order('created_at', { ascending: false })
 }
 
@@ -203,6 +223,22 @@ export async function createLead(userId: string, leadData: any) {
     })
     .select()
     .single()
+}
+
+/**
+ * Declina uma proposta e arquiva o lead
+ */
+export async function declineProposal(leadId: string, reason?: string) {
+  return supabase
+    .from('leads')
+    .update({
+      status: 'lost',
+      metadata: {
+        declined_at: new Date().toISOString(),
+        decline_reason: reason || 'Cliente recusou a proposta',
+      },
+    })
+    .eq('id', leadId)
 }
 
 /**
