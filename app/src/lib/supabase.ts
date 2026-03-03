@@ -6,7 +6,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database.types'
 
-// Variáveis de ambiente (adicione ao seu .env)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
@@ -19,7 +18,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Cliente Supabase tipado
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -29,22 +27,14 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 })
 
 // ============================================
-// HELPER FUNCTIONS
+// AUTENTICAÇÃO
 // ============================================
 
-/**
- * Retorna o usuário autenticado atual
- */
 export async function getCurrentUser() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
   return session?.user ?? null
 }
 
-/**
- * Retorna o user_id do banco (não o auth_user_id)
- */
 export async function getCurrentUserId(): Promise<string | null> {
   const user = await getCurrentUser()
   if (!user) return null
@@ -63,50 +53,30 @@ export async function getCurrentUserId(): Promise<string | null> {
   return data?.id || null
 }
 
-/**
- * Login com email e senha
- */
 export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
 }
 
-/**
- * Registro de novo usuário
- */
 export async function signUp(email: string, password: string, fullName: string) {
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-  })
+  const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
 
   if (authError || !authData.user) {
     return { data: null, error: authError }
   }
 
-  // Criar entrada na tabela users
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .insert({
-      auth_user_id: authData.user.id,
-      email,
-      full_name: fullName,
-    })
+    .insert({ auth_user_id: authData.user.id, email, full_name: fullName })
     .select()
     .single()
 
   return { data: userData, error: userError }
 }
 
-/**
- * Logout
- */
 export async function signOut() {
   return supabase.auth.signOut()
 }
 
-/**
- * Listener de mudanças de autenticação
- */
 export function onAuthStateChange(callback: (user: any) => void) {
   return supabase.auth.onAuthStateChange((event, session) => {
     callback(session?.user ?? null)
@@ -114,120 +84,34 @@ export function onAuthStateChange(callback: (user: any) => void) {
 }
 
 // ============================================
-// QUERY HELPERS
+// LEADS
 // ============================================
 
 /**
- * Busca todos os leads do usuário
+ * Busca leads do usuário com filtro opcional de status.
+ * statusFilter: undefined = todos, 'active' = não perdidos, 'archived' = perdidos
  */
-export async function getLeads(userId: string) {
-  return supabase
+export async function getLeads(userId: string, statusFilter?: 'active' | 'archived') {
+  let q = supabase
     .from('leads')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
+
+  if (statusFilter === 'active') q = q.neq('status', 'lost')
+  else if (statusFilter === 'archived') q = q.eq('status', 'lost')
+
+  return q
 }
 
-/**
- * Busca leads arquivados (declinados)
- */
-export async function getArchivedLeads(userId: string) {
-  return supabase
-    .from('leads')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'lost')
-    .order('created_at', { ascending: false })
-}
-
-/**
- * Busca todos os projetos ativos do usuário com seus relacionamentos
- */
-export async function getProjects(userId: string) {
-  return supabase
-    .from('projects')
-    .select(
-      `
-      *,
-      client:clients(*),
-      tasks(*),
-      payments(*)
-    `
-    )
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-}
-
-/**
- * Busca um projeto específico com todos os detalhes
- */
-export async function getProjectById(projectId: string) {
-  return supabase
-    .from('projects')
-    .select(
-      `
-      *,
-      client:clients(*),
-      tasks(*),
-      payments(*),
-      documents(*),
-      workflow_history(*)
-    `
-    )
-    .eq('id', projectId)
-    .single()
-}
-
-/**
- * Busca tarefas de um projeto específico
- */
-export async function getTasksByProject(projectId: string) {
-  return supabase
-    .from('tasks')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('position', { ascending: true })
-}
-
-/**
- * Atualiza o status de uma tarefa
- */
-export async function updateTaskStatus(taskId: string, status: 'todo' | 'doing' | 'done') {
-  return supabase.from('tasks').update({ status }).eq('id', taskId)
-}
-
-/**
- * Busca resumo financeiro de todos os projetos
- */
-export async function getFinancialSummary() {
-  return supabase.from('project_financial_summary').select('*')
-}
-
-/**
- * Busca métricas do dashboard
- */
-export async function getDashboardMetrics(userId: string) {
-  return supabase.from('dashboard_metrics').select('*').eq('user_id', userId).single()
-}
-
-/**
- * Cria um novo lead
- */
 export async function createLead(userId: string, leadData: any) {
   return supabase
     .from('leads')
-    .insert({
-      user_id: userId,
-      ...leadData,
-    })
+    .insert({ user_id: userId, ...leadData })
     .select()
     .single()
 }
 
-/**
- * Declina uma proposta e arquiva o lead
- */
 export async function declineProposal(leadId: string, reason?: string) {
   return supabase
     .from('leads')
@@ -241,22 +125,15 @@ export async function declineProposal(leadId: string, reason?: string) {
     .eq('id', leadId)
 }
 
-/**
- * Converte um lead em cliente e projeto
- */
 export async function convertLeadToProject(leadId: string, userId: string) {
-  // 1. Buscar o lead
   const { data: lead, error: leadError } = await supabase
     .from('leads')
     .select('*')
     .eq('id', leadId)
     .single()
 
-  if (leadError || !lead) {
-    return { data: null, error: leadError }
-  }
+  if (leadError || !lead) return { data: null, error: leadError }
 
-  // 2. Criar cliente
   const { data: client, error: clientError } = await supabase
     .from('clients')
     .insert({
@@ -270,11 +147,8 @@ export async function convertLeadToProject(leadId: string, userId: string) {
     .select()
     .single()
 
-  if (clientError || !client) {
-    return { data: null, error: clientError }
-  }
+  if (clientError || !client) return { data: null, error: clientError }
 
-  // 3. Criar projeto
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .insert({
@@ -287,37 +161,78 @@ export async function convertLeadToProject(leadId: string, userId: string) {
     .select()
     .single()
 
-  if (projectError) {
-    return { data: null, error: projectError }
-  }
+  if (projectError) return { data: null, error: projectError }
 
-  // 4. Atualizar lead como convertido
   await supabase
     .from('leads')
-    .update({
-      status: 'won',
-      converted_at: new Date().toISOString(),
-    })
+    .update({ status: 'won', converted_at: new Date().toISOString() })
     .eq('id', leadId)
 
   return { data: { client, project }, error: null }
 }
 
+// ============================================
+// PROJETOS
+// ============================================
+
 /**
- * Avança o workflow de um projeto
+ * Busca projetos do usuário com filtro de status.
+ * status: 'active' | 'archived' | 'declined' | 'all'
  */
+export async function getProjects(
+  userId: string,
+  status: 'active' | 'archived' | 'declined' | 'all' = 'active'
+) {
+  let q = supabase
+    .from('projects')
+    .select('*, client:clients(*), tasks(*), payments(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (status !== 'all') q = q.eq('status', status)
+
+  return q
+}
+
+export async function getProjectById(projectId: string) {
+  return supabase
+    .from('projects')
+    .select('*, client:clients(*), tasks(*), payments(*), documents(*), workflow_history(*)')
+    .eq('id', projectId)
+    .single()
+}
+
+export async function declineProject(projectId: string, reason?: string) {
+  return supabase
+    .from('projects')
+    .update({
+      is_active: false,
+      status: 'declined',
+      metadata: {
+        declined_at: new Date().toISOString(),
+        decline_reason: reason || 'Projeto declinado',
+      },
+    })
+    .eq('id', projectId)
+}
+
+export async function archiveProject(projectId: string) {
+  return supabase
+    .from('projects')
+    .update({
+      is_active: false,
+      status: 'archived',
+      archived_at: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+}
+
 export async function advanceProjectWorkflow(projectId: string) {
-  const workflowOrder: any[] = [
-    'initial_contact',
-    'understanding',
-    'proposal',
-    'contract',
-    'development',
-    'payment',
-    'finalization',
+  const workflowOrder = [
+    'initial_contact', 'understanding', 'proposal',
+    'contract', 'development', 'payment', 'finalization',
   ]
 
-  // Buscar step atual
   const { data: project } = await supabase
     .from('projects')
     .select('current_step')
@@ -326,61 +241,290 @@ export async function advanceProjectWorkflow(projectId: string) {
 
   if (!project) return { data: null, error: 'Project not found' }
 
-  const currentIndex = workflowOrder.indexOf(project.current_step)
-  const nextStep = workflowOrder[currentIndex + 1]
+  const nextStep = workflowOrder[workflowOrder.indexOf(project.current_step) + 1]
+  if (!nextStep) return { data: null, error: 'Already at final step' }
 
-  if (!nextStep) {
-    return { data: null, error: 'Already at final step' }
-  }
-
-  // Atualizar step
   return supabase.from('projects').update({ current_step: nextStep }).eq('id', projectId)
 }
 
-/**
- * Cria um novo pagamento
- */
+// ============================================
+// TAREFAS
+// ============================================
+
+export async function getTasksByProject(projectId: string) {
+  return supabase
+    .from('tasks')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('position', { ascending: true })
+}
+
+export async function updateTaskStatus(taskId: string, status: 'todo' | 'doing' | 'done') {
+  return supabase.from('tasks').update({ status }).eq('id', taskId)
+}
+
+// ============================================
+// PAGAMENTOS
+// ============================================
+
 export async function createPayment(userId: string, paymentData: any) {
   return supabase
     .from('payments')
-    .insert({
-      user_id: userId,
-      ...paymentData,
-    })
+    .insert({ user_id: userId, ...paymentData })
     .select()
     .single()
 }
 
-/**
- * Marca um pagamento como pago
- */
 export async function markPaymentAsPaid(paymentId: string) {
   return supabase
     .from('payments')
-    .update({
-      status: 'paid',
-      paid_date: new Date().toISOString(),
-    })
+    .update({ status: 'paid', paid_date: new Date().toISOString() })
     .eq('id', paymentId)
 }
 
-/**
- * Salva um documento gerado
- */
+// ============================================
+// DOCUMENTOS (gerados por IA)
+// ============================================
+
 export async function saveDocument(userId: string, documentData: any) {
   return supabase
     .from('documents')
-    .insert({
-      user_id: userId,
-      ...documentData,
-    })
+    .insert({ user_id: userId, ...documentData })
     .select()
     .single()
 }
 
+// ============================================
+// PROPOSTAS COMERCIAIS
+// ============================================
+
+export async function getProposals(userId: string) {
+  return supabase
+    .from('proposals')
+    .select('*, project:projects(id, title, client:clients(name)), lead:leads(id, name), media_files(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+}
+
+export async function createProposal(userId: string, data: {
+  title: string
+  description?: string
+  project_id?: string
+  lead_id?: string
+  status?: string
+  notes?: string
+}) {
+  return supabase
+    .from('proposals')
+    .insert({ user_id: userId, ...data })
+    .select()
+    .single()
+}
+
+export async function updateProposal(proposalId: string, updates: {
+  title?: string
+  description?: string
+  status?: string
+  sent_at?: string
+  responded_at?: string
+  notes?: string
+}) {
+  return supabase
+    .from('proposals')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', proposalId)
+    .select()
+    .single()
+}
+
+export async function deleteProposal(proposalId: string) {
+  return supabase.from('proposals').delete().eq('id', proposalId)
+}
+
+// ============================================
+// CONTRATOS
+// ============================================
+
+export async function getContracts(userId: string) {
+  return supabase
+    .from('contracts')
+    .select('*, project:projects(id, title, client:clients(name)), media_files(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+}
+
+export async function createContract(userId: string, data: {
+  title: string
+  project_id: string
+  description?: string
+  status?: string
+  effective_date?: string
+  expiry_date?: string
+  notes?: string
+}) {
+  return supabase
+    .from('contracts')
+    .insert({ user_id: userId, ...data })
+    .select()
+    .single()
+}
+
+export async function updateContract(contractId: string, updates: {
+  title?: string
+  description?: string
+  status?: string
+  signed_at?: string
+  effective_date?: string
+  expiry_date?: string
+  notes?: string
+}) {
+  return supabase
+    .from('contracts')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', contractId)
+    .select()
+    .single()
+}
+
+export async function deleteContract(contractId: string) {
+  return supabase.from('contracts').delete().eq('id', contractId)
+}
+
+// ============================================
+// NOTAS FISCAIS
+// ============================================
+
+export async function getFiscalNotes(userId: string) {
+  return supabase
+    .from('fiscal_notes')
+    .select('*, project:projects(id, title, client:clients(name))')
+    .eq('user_id', userId)
+    .order('issue_date', { ascending: false })
+}
+
+export async function createFiscalNote(userId: string, data: {
+  issue_date: string
+  service_desc: string
+  gross_value: number
+  iss_rate: number
+  project_id?: string
+  payment_id?: string
+  nf_number?: string
+  nf_series?: string
+  recipient_name?: string
+  recipient_cnpj?: string
+  status?: string
+  notes?: string
+}) {
+  return supabase
+    .from('fiscal_notes')
+    .insert({ user_id: userId, ...data })
+    .select()
+    .single()
+}
+
+export async function updateFiscalNote(noteId: string, updates: {
+  nf_number?: string
+  status?: string
+  file_path?: string
+  file_url?: string
+  notes?: string
+}) {
+  return supabase
+    .from('fiscal_notes')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', noteId)
+    .select()
+    .single()
+}
+
+export async function deleteFiscalNote(noteId: string) {
+  return supabase.from('fiscal_notes').delete().eq('id', noteId)
+}
+
+// ============================================
+// ARQUIVOS DE MÍDIA
+// ============================================
+
+export async function createMediaFile(userId: string, fileData: {
+  file_name: string
+  file_path: string
+  file_url: string
+  mime_type?: string
+  file_size?: number
+  description?: string
+  proposal_id?: string
+  contract_id?: string
+  project_id?: string
+  sort_order?: number
+}) {
+  return supabase
+    .from('media_files')
+    .insert({ user_id: userId, ...fileData })
+    .select()
+    .single()
+}
+
+export async function deleteMediaFile(fileId: string) {
+  return supabase.from('media_files').delete().eq('id', fileId)
+}
+
+// ============================================
+// SUPABASE STORAGE
+// ============================================
+
 /**
- * Busca atividades recentes
+ * Faz upload de um arquivo para o Supabase Storage.
+ * @param authUserId - auth.uid() do usuário (para o caminho no Storage)
+ * @param folder     - subpasta: 'proposals' | 'contracts' | 'projects' | 'fiscal-notes'
+ * @param entityId   - UUID da entidade pai
+ * @param file       - File object
  */
+export async function uploadFile(
+  authUserId: string,
+  folder: 'proposals' | 'contracts' | 'projects' | 'fiscal-notes',
+  entityId: string,
+  file: File
+): Promise<{ data: { path: string; url: string } | null; error: any }> {
+  const ext = file.name.split('.').pop()
+  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const filePath = `${authUserId}/${folder}/${entityId}/${uniqueName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('freeela')
+    .upload(filePath, file, { cacheControl: '3600', upsert: false })
+
+  if (uploadError) return { data: null, error: uploadError }
+
+  const { data: urlData, error: urlError } = await supabase.storage
+    .from('freeela')
+    .createSignedUrl(filePath, 86400)
+
+  if (urlError) return { data: null, error: urlError }
+
+  return { data: { path: filePath, url: urlData.signedUrl }, error: null }
+}
+
+export async function deleteStorageFile(filePath: string) {
+  return supabase.storage.from('freeela').remove([filePath])
+}
+
+export async function getSignedUrl(filePath: string, expiresIn: number = 3600) {
+  return supabase.storage.from('freeela').createSignedUrl(filePath, expiresIn)
+}
+
+// ============================================
+// FINANCEIRO / MÉTRICAS
+// ============================================
+
+export async function getFinancialSummary() {
+  return supabase.from('project_financial_summary').select('*')
+}
+
+export async function getDashboardMetrics(userId: string) {
+  return supabase.from('dashboard_metrics').select('*').eq('user_id', userId).single()
+}
+
 export async function getRecentActivities(userId: string, limit: number = 20) {
   return supabase
     .from('activities')
@@ -394,47 +538,17 @@ export async function getRecentActivities(userId: string, limit: number = 20) {
 // REALTIME SUBSCRIPTIONS
 // ============================================
 
-/**
- * Inscreve-se para mudanças em tarefas de um projeto
- */
-export function subscribeToProjectTasks(
-  projectId: string,
-  callback: (payload: any) => void
-) {
+export function subscribeToProjectTasks(projectId: string, callback: (payload: any) => void) {
   return supabase
     .channel(`project-${projectId}-tasks`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'tasks',
-        filter: `project_id=eq.${projectId}`,
-      },
-      callback
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `project_id=eq.${projectId}` }, callback)
     .subscribe()
 }
 
-/**
- * Inscreve-se para mudanças em pagamentos de um projeto
- */
-export function subscribeToProjectPayments(
-  projectId: string,
-  callback: (payload: any) => void
-) {
+export function subscribeToProjectPayments(projectId: string, callback: (payload: any) => void) {
   return supabase
     .channel(`project-${projectId}-payments`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'payments',
-        filter: `project_id=eq.${projectId}`,
-      },
-      callback
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'payments', filter: `project_id=eq.${projectId}` }, callback)
     .subscribe()
 }
 

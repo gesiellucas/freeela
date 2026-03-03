@@ -2,8 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  body {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar — thin and refined */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d4d4d8;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a1a1aa;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+  }
+
+  /* Sidebar always dark — not dependent on dark mode class */
+  .sidebar-dark {
+    background-color: #0f0f11;
+    border-color: #1e1e24;
+  }
+
+  .animate-in {
+    animation-fill-mode: both;
+  }
+
+  .fade-in {
+    animation-name: fade-up;
+    animation-duration: 250ms;
+    animation-timing-function: ease-out;
+  }
+
+  .zoom-in-95 {
+    animation-name: zoom-in-95;
+    animation-duration: 200ms;
+    animation-timing-function: ease-out;
+  }
+}
+
+@keyframes fade-up {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes zoom-in-95 {
+  0%   { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
 }

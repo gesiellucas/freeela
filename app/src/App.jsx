@@ -15,7 +15,6 @@ import {
   ExternalLink,
   Download,
   Settings,
-  LayoutDashboard,
   MoreVertical,
   Trash2,
   AlertCircle,
@@ -29,7 +28,13 @@ import {
   CreditCard,
   Layers,
   FileSignature,
-  LogOut
+  LogOut,
+  Receipt,
+  Building2,
+  Archive,
+  UploadCloud,
+  Music,
+  Paperclip,
 } from 'lucide-react';
 
 // Importar Supabase client e funções
@@ -47,11 +52,35 @@ import {
   convertLeadToProject as convertLeadToProjectAPI,
   updateTaskStatus as updateTaskStatusAPI,
   advanceProjectWorkflow,
-  getDashboardMetrics,
   createPayment,
   saveDocument,
-  declineProposal
+  declineProposal,
+  declineProject as declineProjectAPI,
+  archiveProject as archiveProjectAPI,
+  getProposals,
+  createProposal,
+  updateProposal,
+  deleteProposal,
+  getContracts,
+  createContract,
+  updateContract,
+  deleteContract,
+  getFiscalNotes,
+  createFiscalNote,
+  updateFiscalNote,
+  deleteFiscalNote,
+  createMediaFile,
+  deleteMediaFile,
+  uploadFile,
+  deleteStorageFile,
 } from './lib/supabase';
+
+import LeadsView     from './views/LeadsView';
+import ProjetosView  from './views/ProjetosView';
+import AreaFiscalView from './views/AreaFiscalView';
+import FinanceiroView from './views/FinanceiroView';
+import PropostasView from './views/PropostasView';
+import ContratosView from './views/ContratosView';
 
 // --- Constantes e Templates ---
 
@@ -85,26 +114,26 @@ const getStepNumber = (stepKey) => {
 // --- Componentes Reutilizáveis ---
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm ${className}`}>
+  <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-card ${className}`}>
     {children}
   </div>
 );
 
 const Button = ({ children, onClick, variant = "primary", className = "", icon: Icon, loading = false, disabled = false }) => {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200",
-    outline: "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200",
-    ai: "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-md",
-    ghost: "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+    primary: "bg-brand-500 text-zinc-900 hover:bg-brand-400 font-semibold shadow-sm",
+    secondary: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
+    outline: "border border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800",
+    danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900",
+    ai: "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-md font-semibold",
+    ghost: "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
   };
 
   return (
     <button
       onClick={loading || disabled ? null : onClick}
       disabled={loading || disabled}
-      className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`px-4 py-2 rounded-xl font-medium transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${variants[variant]} ${className}`}
     >
       {loading ? <Loader2 size={16} className="animate-spin" /> : (Icon && <Icon size={16} />)}
       {children}
@@ -114,15 +143,15 @@ const Button = ({ children, onClick, variant = "primary", className = "", icon: 
 
 const Badge = ({ children, color = "blue" }) => {
   const colors = {
-    blue: "bg-blue-100 text-blue-700",
-    green: "bg-green-100 text-green-700",
-    yellow: "bg-yellow-100 text-yellow-700",
-    purple: "bg-purple-100 text-purple-700",
-    slate: "bg-slate-100 text-slate-700",
-    red: "bg-red-100 text-red-700"
+    blue: "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900",
+    green: "bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900",
+    yellow: "bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900",
+    purple: "bg-violet-50 text-violet-700 border border-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900",
+    slate: "bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
+    red: "bg-red-50 text-red-600 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900"
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors[color]}`}>
+    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${colors[color]}`}>
       {children}
     </span>
   );
@@ -133,17 +162,17 @@ const Badge = ({ children, color = "blue" }) => {
 const Modal = ({ isOpen, onClose, title, children, footer }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+    <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <Card className="w-full max-w-lg overflow-hidden shadow-elevated animate-in zoom-in-95">
+        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">{title}</h3>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X size={18}/></button>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {children}
         </div>
         {footer && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3 bg-slate-50 dark:bg-slate-900/50">
+          <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3 bg-zinc-50 dark:bg-zinc-900/50">
             {footer}
           </div>
         )}
@@ -155,24 +184,24 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
 const AIModal = ({ isOpen, onClose, title, content, onApply, type }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-2xl border-purple-500/20">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-          <h3 className="font-black flex items-center gap-2 text-purple-700 dark:text-purple-300">
-            <Sparkles size={20}/> {title}
+    <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+      <Card className="w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-elevated border-violet-200/50 dark:border-violet-900/30">
+        <div className="px-6 py-4 border-b border-violet-100 dark:border-violet-900/30 flex justify-between items-center bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/20">
+          <h3 className="font-semibold flex items-center gap-2.5 text-violet-700 dark:text-violet-300 tracking-tight">
+            <Sparkles size={18} className="text-violet-500"/> {title}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-white/60 dark:hover:bg-zinc-800 transition-colors"><X size={18}/></button>
         </div>
-        <div className="p-8 overflow-y-auto flex-1 bg-white dark:bg-slate-900">
-          <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap font-mono text-slate-700 dark:text-slate-300">
+        <div className="p-8 overflow-y-auto flex-1">
+          <div className="max-w-none text-sm leading-relaxed whitespace-pre-wrap font-mono text-zinc-700 dark:text-zinc-300">
             {content}
           </div>
         </div>
-        <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-          <p className="text-xs text-slate-500">Gerado pelo Gemini 2.5 Flash • Rascunho para revisão</p>
+        <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/60">
+          <p className="text-xs text-zinc-400 font-medium">Gemini 2.5 Flash · Rascunho para revisão</p>
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose}>Descartar</Button>
-            {onApply && <Button variant="ai" onClick={onApply}>Utilizar este Conteúdo</Button>}
+            {onApply && <Button variant="ai" onClick={onApply}><Sparkles size={14}/> Utilizar este Conteúdo</Button>}
           </div>
         </div>
       </Card>
@@ -225,45 +254,50 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <div className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center justify-center gap-3">
-              <Layers className="text-blue-600" /> FREELANCE OS
-            </h1>
-            <p className="text-sm text-slate-500 mt-2">
-              {mode === 'login' ? 'Entre para continuar' : 'Crie sua conta'}
-            </p>
-          </div>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-950">
+      {/* Subtle background texture */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.06)_0%,_transparent_60%)]" />
 
+      <div className="relative w-full max-w-sm mx-4">
+        {/* Logo mark */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center">
+              <Layers size={18} className="text-zinc-900" />
+            </div>
+            <span className="text-white text-xl font-bold tracking-tight">freeela</span>
+          </div>
+          <p className="text-zinc-400 text-sm">
+            {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta gratuitamente'}
+          </p>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-elevated">
           {!isConfigured && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 text-xs">
-              <p className="font-bold mb-2">⚠️ Supabase não configurado</p>
-              <p className="mb-2">Crie um arquivo <code className="bg-amber-100 px-1 rounded">.env</code> na pasta <code className="bg-amber-100 px-1 rounded">app/</code> com:</p>
-              <pre className="bg-amber-100 p-2 rounded text-[10px] overflow-x-auto">
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-anon-key
+            <div className="bg-amber-950/40 border border-amber-800/50 text-amber-300 px-4 py-3 rounded-xl mb-6 text-xs">
+              <p className="font-semibold mb-2">Supabase não configurado</p>
+              <p className="mb-2 text-amber-400/80">Crie um arquivo <code className="bg-amber-900/40 px-1 rounded font-mono">.env</code> na pasta <code className="bg-amber-900/40 px-1 rounded font-mono">app/</code> com:</p>
+              <pre className="bg-amber-950/60 p-2 rounded text-[10px] overflow-x-auto font-mono text-amber-300">
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=sua-anon-key
               </pre>
-              <p className="mt-2 text-[10px]">Consulte <code className="bg-amber-100 px-1 rounded">SETUP.md</code> para instruções completas</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            <div className="bg-red-950/40 border border-red-800/50 text-red-300 px-4 py-3 rounded-xl mb-6 text-sm">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {mode === 'signup' && (
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-2">Nome Completo</label>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Nome Completo</label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-3 text-sm"
+                  className="w-full bg-zinc-800 border border-zinc-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all"
                   placeholder="João Silva"
                   required
                 />
@@ -271,45 +305,45 @@ VITE_SUPABASE_ANON_KEY=sua-anon-key
             )}
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-2">Email</label>
+              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-3 text-sm"
+                className="w-full bg-zinc-800 border border-zinc-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all"
                 placeholder="seu@email.com"
                 required
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-2">Senha</label>
+              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-2">Senha</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-3 text-sm"
+                className="w-full bg-zinc-800 border border-zinc-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all"
                 placeholder="••••••••"
                 required
               />
             </div>
 
-            <Button variant="primary" className="w-full" loading={loading}>
+            <Button variant="primary" className="w-full py-3 text-sm font-semibold" loading={loading}>
               {mode === 'login' ? 'Entrar' : 'Criar Conta'}
             </Button>
 
-            <div className="text-center mt-4">
+            <div className="text-center pt-1">
               <button
                 type="button"
                 onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                className="text-sm text-blue-600 hover:underline"
+                className="text-sm text-zinc-400 hover:text-brand-400 transition-colors"
               >
-                {mode === 'login' ? 'Criar nova conta' : 'Já tenho conta'}
+                {mode === 'login' ? 'Não tem conta? Criar agora' : 'Já tenho uma conta'}
               </button>
             </div>
           </form>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
@@ -323,18 +357,26 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   // Data State
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('leads');
   const [leads, setLeads] = useState([]);
+  const [allLeads, setAllLeads] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [proposals, setProposals] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [fiscalNotes, setFiscalNotes] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [rootDirectory, setRootDirectory] = useState(null);
-  const [dashboardMetrics, setDashboardMetrics] = useState(null);
+  const [comercialOpen, setComercialOpen] = useState(true);
+  const [leadsFilter, setLeadsFilter] = useState('active');
+  const [projectsFilter, setProjectsFilter] = useState('active');
 
   // UI States
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [leadToDecline, setLeadToDecline] = useState(null);
+  const [isDeclineProjectModalOpen, setIsDeclineProjectModalOpen] = useState(false);
+  const [projectToDecline, setProjectToDecline] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiModal, setAiModal] = useState({ open: false, title: '', content: '', type: '', onApply: null });
   const [dataLoading, setDataLoading] = useState(false);
@@ -342,6 +384,7 @@ export default function App() {
   // Form States
   const [newLead, setNewLead] = useState({ name: '', email: '', demand: '', value: '' });
   const [declineReason, setDeclineReason] = useState('');
+  const [declineProjectReason, setDeclineProjectReason] = useState('');
 
   // Verificar autenticação ao carregar
   useEffect(() => {
@@ -401,30 +444,33 @@ export default function App() {
 
     setDataLoading(true);
     try {
-      // Carregar leads (filtrar apenas leads ativos, não arquivados)
-      const { data: leadsData, error: leadsError } = await getLeads(userId);
-      if (!leadsError && leadsData) {
-        // Filtrar leads que não foram declinados (status !== 'lost')
-        const activeLeads = leadsData.filter(lead => lead.status !== 'lost');
-        setLeads(activeLeads);
-      }
+      const [leadsRes, projectsRes, proposalsRes, contractsRes, fiscalRes] = await Promise.all([
+        getLeads(userId),
+        getProjects(userId, 'all'),
+        getProposals(userId),
+        getContracts(userId),
+        getFiscalNotes(userId),
+      ]);
 
-      // Carregar projetos com relacionamentos
-      const { data: projectsData, error: projectsError } = await getProjects(userId);
-      if (!projectsError && projectsData) {
-        setProjects(projectsData);
+      if (leadsRes.data) {
+        setAllLeads(leadsRes.data);
+        setLeads(leadsRes.data.filter(l => l.status !== 'lost'));
       }
-
-      // Carregar métricas do dashboard
-      const { data: metricsData, error: metricsError } = await getDashboardMetrics(userId);
-      if (!metricsError && metricsData) {
-        setDashboardMetrics(metricsData);
-      }
+      if (projectsRes.data) setProjects(projectsRes.data);
+      if (proposalsRes.data) setProposals(proposalsRes.data);
+      if (contractsRes.data) setContracts(contractsRes.data);
+      if (fiscalRes.data) setFiscalNotes(fiscalRes.data);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     } finally {
       setDataLoading(false);
     }
+  };
+
+  const handleArchiveProject = async (projectId) => {
+    await archiveProjectAPI(projectId);
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: 'archived', is_active: false } : p));
+    if (selectedProject?.id === projectId) setSelectedProject(null);
   };
 
   // --- Gemini API ---
@@ -534,6 +580,7 @@ export default function App() {
 
       if (data) {
         setLeads([data, ...leads]);
+        setAllLeads([data, ...allLeads]);
         setIsNewLeadModalOpen(false);
         setNewLead({ name: '', email: '', demand: '', value: '' });
       }
@@ -579,8 +626,9 @@ export default function App() {
 
       if (error) throw error;
 
-      // Remover lead da lista (foi arquivado)
+      // Remover lead da lista ativa e marcar como lost em allLeads
       setLeads(leads.filter(l => l.id !== leadToDecline.id));
+      setAllLeads(allLeads.map(l => l.id === leadToDecline.id ? { ...l, status: 'lost', decline_reason: declineReason } : l));
 
       // Fechar modal e limpar estados
       setIsDeclineModalOpen(false);
@@ -595,6 +643,33 @@ export default function App() {
   const openDeclineModal = (lead) => {
     setLeadToDecline(lead);
     setIsDeclineModalOpen(true);
+  };
+
+  const handleDeclineProject = async () => {
+    if (!projectToDecline) return;
+
+    try {
+      const { error } = await declineProjectAPI(projectToDecline.id, declineProjectReason);
+
+      if (error) throw error;
+
+      setProjects(prev => prev.map(p => p.id === projectToDecline.id ? { ...p, status: 'declined', is_active: false } : p));
+      if (selectedProject?.id === projectToDecline.id) {
+        setSelectedProject(null);
+      }
+
+      setIsDeclineProjectModalOpen(false);
+      setProjectToDecline(null);
+      setDeclineProjectReason('');
+    } catch (err) {
+      console.error('Erro ao declinar projeto:', err);
+      alert('Erro ao declinar projeto');
+    }
+  };
+
+  const openDeclineProjectModal = (project) => {
+    setProjectToDecline(project);
+    setIsDeclineProjectModalOpen(true);
   };
 
   const updateTaskStatus = async (projectId, taskId, newStatus) => {
@@ -690,340 +765,26 @@ export default function App() {
     setUser(null);
     setUserId(null);
     setLeads([]);
+    setAllLeads([]);
     setProjects([]);
+    setProposals([]);
+    setContracts([]);
+    setFiscalNotes([]);
     setSelectedProject(null);
   };
 
   // --- Views ---
 
-  const Dashboard = () => {
-    const totalBilled = projects.reduce((acc, p) => {
-      const payments = p.payments || [];
-      return acc + payments.reduce((pa, pay) => pay.status === 'paid' ? pa + (pay.amount || 0) : pa, 0);
-    }, 0);
-
-    const totalPending = projects.reduce((acc, p) => acc + (p.value || 0), 0) - totalBilled;
-
-    return (
-      <div className="space-y-6 animate-in fade-in duration-500">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-5 border-l-4 border-l-blue-500">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Leads Quentes</p>
-                <p className="text-3xl font-black mt-1">{leads.length}</p>
-              </div>
-              <Users className="text-blue-200" size={24}/>
-            </div>
-          </Card>
-          <Card className="p-5 border-l-4 border-l-purple-500">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Projetos Ativos</p>
-                <p className="text-3xl font-black mt-1">{projects.length}</p>
-              </div>
-              <Layers className="text-purple-200" size={24}/>
-            </div>
-          </Card>
-          <Card className="p-5 border-l-4 border-l-green-500">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Faturamento Total</p>
-                <p className="text-2xl font-black mt-1">R$ {totalBilled.toLocaleString('pt-BR')}</p>
-              </div>
-              <TrendingUp className="text-green-200" size={24}/>
-            </div>
-          </Card>
-          <Card className="p-5 border-l-4 border-l-amber-500">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">A Receber</p>
-                <p className="text-2xl font-black mt-1">R$ {totalPending.toLocaleString('pt-BR')}</p>
-              </div>
-              <Clock className="text-amber-200" size={24}/>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 overflow-hidden">
-             <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                <h3 className="font-bold flex items-center gap-2 text-sm"><Layers size={16} className="text-blue-500"/> Timeline de Operações</h3>
-                <Button variant="outline" className="h-7 text-[10px]" onClick={() => setActiveTab('projects')}>Ver Workflow</Button>
-             </div>
-             <div className="p-4 space-y-4">
-                {projects.length === 0 ? (
-                  <p className="text-center text-slate-400 py-8">Nenhum projeto ativo</p>
-                ) : (
-                  projects.map(p => {
-                    const stepNumber = getStepNumber(p.current_step);
-                    return (
-                      <div key={p.id} className="group p-4 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-200 transition-all cursor-pointer" onClick={() => {setSelectedProject(p); setActiveTab('projects')}}>
-                         <div className="flex justify-between items-center mb-3">
-                            <span className="font-bold text-sm">{p.title}</span>
-                            <Badge color={stepNumber > 5 ? "green" : "blue"}>
-                              {WORKFLOW_STEPS[stepNumber - 1]?.label}
-                            </Badge>
-                         </div>
-                         <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                            <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${(stepNumber / 7) * 100}%` }}></div>
-                         </div>
-                         <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                            <span>Início</span>
-                            <span>{Math.round((stepNumber/7)*100)}% concluído</span>
-                            <span>Entrega</span>
-                         </div>
-                      </div>
-                    );
-                  })
-                )}
-             </div>
-          </Card>
-
-          <Card className="overflow-hidden">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-               <h3 className="font-bold flex items-center gap-2 text-sm"><Sparkles size={16} className="text-purple-500"/> Pipeline de Leads</h3>
-            </div>
-            <div className="p-2">
-               {leads.length === 0 ? (
-                 <p className="text-center text-slate-400 py-8 text-sm">Nenhum lead</p>
-               ) : (
-                 leads.map(lead => (
-                   <div key={lead.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center justify-between group transition-colors">
-                      <div className="flex items-center gap-3 flex-1">
-                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-xs font-black">{lead.name.charAt(0)}</div>
-                         <div className="flex-1">
-                            <p className="text-xs font-bold">{lead.name}</p>
-                            <p className="text-[10px] text-slate-500 line-clamp-1">{lead.demand}</p>
-                         </div>
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                         <button
-                           onClick={() => openDeclineModal(lead)}
-                           className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-500 transition-colors"
-                           title="Declinar proposta"
-                         >
-                           <X size={14}/>
-                         </button>
-                         <Button variant="ghost" className="h-8 w-8 !p-0" onClick={() => convertLeadToProject(lead)}><ArrowRight size={14}/></Button>
-                      </div>
-                   </div>
-                 ))
-               )}
-               <Button variant="outline" className="w-full mt-2 border-dashed h-10 text-xs" onClick={() => setIsNewLeadModalOpen(true)}>+ Adicionar Novo Lead</Button>
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  };
-
-  const ProjectDetail = () => {
-    const [subTab, setSubTab] = useState('workflow');
-    const proj = selectedProject || projects[0];
-
-    if (!proj) {
-      return (
-        <div className="text-center py-20">
-          <p className="text-slate-400">Selecione um projeto</p>
-        </div>
-      );
-    }
-
-    const stepNumber = getStepNumber(proj.current_step);
-    const tasks = proj.tasks || [];
-    const payments = proj.payments || [];
-
-    return (
-      <div className="space-y-6 animate-in slide-in-from-right duration-300">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-             <button onClick={() => setActiveTab('dashboard')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><X size={20}/></button>
-             <div>
-                <h2 className="text-xl font-black">{proj.title}</h2>
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                   <Users size={12}/> {proj.client?.name || 'Cliente'} <span className="text-slate-300">|</span> <CreditCard size={12}/> R$ {(proj.value || 0).toLocaleString('pt-BR')}
-                </div>
-             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" icon={FolderOpen} onClick={() => createProjectFolders(proj)} disabled={proj.folders_created}>
-              {proj.folders_created ? "Pastas OK" : "Criar Pastas"}
-            </Button>
-            <Button variant="ai" icon={Sparkles} onClick={() => handleGenerateDocument('proposal', proj)} loading={aiLoading}>Gerar Proposta</Button>
-            <Button onClick={() => handleAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
-              {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Sub Navigation */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
-           {['workflow', 'kanban', 'financeiro'].map(tab => (
-             <button
-              key={tab}
-              onClick={() => setSubTab(tab)}
-              className={`pb-3 px-1 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${subTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-             >
-               {tab}
-             </button>
-           ))}
-        </div>
-
-        {subTab === 'workflow' && (
-          <div className="space-y-8 py-4">
-            <div className="flex justify-between px-2 relative">
-               <div className="absolute top-6 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 z-0"></div>
-               {WORKFLOW_STEPS.map(s => {
-                 const isActive = stepNumber === s.id;
-                 const isDone = stepNumber > s.id;
-                 return (
-                   <div key={s.id} className="relative z-10 flex flex-col items-center w-24">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border-2
-                        ${isActive ? 'bg-blue-600 border-blue-100 text-white shadow-xl shadow-blue-500/20 scale-110' :
-                          isDone ? 'bg-green-500 border-green-50 text-white' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
-                        {isDone ? <CheckCircle2 size={20}/> : s.icon}
-                      </div>
-                      <p className={`text-[9px] font-black uppercase mt-3 tracking-tighter text-center ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>{s.label}</p>
-                   </div>
-                 );
-               })}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-               <Card className="p-6">
-                  <h3 className="font-black text-sm mb-6 flex items-center gap-2 underline decoration-blue-500 decoration-4 underline-offset-4 uppercase italic">
-                    {WORKFLOW_STEPS[stepNumber - 1]?.label} • Checklist
-                  </h3>
-                  <div className="space-y-3">
-                     {tasks.filter(t => t.status === 'todo').length === 0 ? (
-                       <p className="text-sm text-slate-400 text-center py-4">Nenhuma tarefa pendente</p>
-                     ) : (
-                       tasks.filter(t => t.status === 'todo').map(task => (
-                         <div key={task.id} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 hover:border-blue-200 transition-all group">
-                            <button
-                              className="w-5 h-5 rounded-md border-2 border-slate-300 group-hover:border-blue-500 flex items-center justify-center"
-                              onClick={() => updateTaskStatus(proj.id, task.id, 'done')}
-                            ></button>
-                            <span className="text-sm font-medium">{task.title}</span>
-                         </div>
-                       ))
-                     )}
-                  </div>
-               </Card>
-               <Card className="p-6">
-                  <h3 className="font-black text-sm mb-6 uppercase italic">Documentos Rápidos (IA)</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     <button onClick={() => handleGenerateDocument('briefing', proj)} className="p-4 rounded-xl border border-slate-100 hover:bg-purple-50 hover:border-purple-200 dark:hover:bg-purple-900/10 transition-all text-left group">
-                        <Calendar className="text-purple-500 mb-2 group-hover:scale-110 transition-transform" size={24}/>
-                        <p className="font-bold text-xs">Briefing Técnico</p>
-                        <p className="text-[10px] text-slate-500 mt-1">Gere perguntas de alinhamento com IA.</p>
-                     </button>
-                     <button onClick={() => handleGenerateDocument('contract', proj)} className="p-4 rounded-xl border border-slate-100 hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-900/10 transition-all text-left group">
-                        <ShieldCheck className="text-blue-500 mb-2 group-hover:scale-110 transition-transform" size={24}/>
-                        <p className="font-bold text-xs">Contrato Jurídico</p>
-                        <p className="text-[10px] text-slate-500 mt-1">Rascunho profissional com cláusulas BR.</p>
-                     </button>
-                  </div>
-               </Card>
-            </div>
-          </div>
-        )}
-
-        {subTab === 'kanban' && (
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 h-[60vh]">
-              {['todo', 'doing', 'done'].map(status => (
-                <div key={status} className="flex flex-col gap-4">
-                   <div className="flex justify-between items-center px-2">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{status}</h4>
-                      <Badge color={status === 'done' ? 'green' : status === 'doing' ? 'yellow' : 'slate'}>
-                        {tasks.filter(t => t.status === status).length}
-                      </Badge>
-                   </div>
-                   <div className="flex-1 bg-slate-50/50 dark:bg-slate-900/30 rounded-2xl p-3 space-y-3 overflow-y-auto">
-                      {tasks.filter(t => t.status === status).map(task => (
-                        <Card key={task.id} className="p-4 shadow-sm hover:shadow-md transition-shadow cursor-move">
-                           <p className="text-sm font-medium mb-3">{task.title}</p>
-                           <div className="flex justify-between items-center">
-                              <Badge color="slate">{task.task_type || 'Técnica'}</Badge>
-                              <div className="flex gap-1">
-                                 {status !== 'todo' && <button onClick={() => updateTaskStatus(proj.id, task.id, status === 'done' ? 'doing' : 'todo')} className="p-1 hover:bg-slate-100 rounded"><ChevronDown size={14}/></button>}
-                                 {status !== 'done' && <button onClick={() => updateTaskStatus(proj.id, task.id, status === 'todo' ? 'doing' : 'done')} className="p-1 hover:bg-slate-100 rounded text-blue-600"><ChevronRight size={14}/></button>}
-                              </div>
-                           </div>
-                        </Card>
-                      ))}
-                   </div>
-                </div>
-              ))}
-           </div>
-        )}
-
-        {subTab === 'financeiro' && (
-          <div className="space-y-6 py-4 animate-in fade-in">
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-5 bg-blue-600 text-white border-none">
-                   <p className="text-[10px] font-black uppercase opacity-70 tracking-widest">Valor do Projeto</p>
-                   <p className="text-3xl font-black">R$ {(proj.value || 0).toLocaleString('pt-BR')}</p>
-                </Card>
-                <Card className="p-5">
-                   <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Já Faturado</p>
-                   <p className="text-2xl font-black text-green-600">
-                     R$ {payments.filter(p => p.status === 'paid').reduce((acc, p) => acc + (p.amount || 0), 0).toLocaleString('pt-BR')}
-                   </p>
-                </Card>
-                <Card className="p-5">
-                   <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saldo Pendente</p>
-                   <p className="text-2xl font-black text-amber-500">
-                     R$ {((proj.value || 0) - payments.filter(p => p.status === 'paid').reduce((acc, p) => acc + (p.amount || 0), 0)).toLocaleString('pt-BR')}
-                   </p>
-                </Card>
-             </div>
-             <Card>
-                <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                   <h4 className="font-bold text-sm">Histórico de Lançamentos</h4>
-                   <Button variant="outline" className="h-8 text-xs">+ Novo Recebimento</Button>
-                </div>
-                <div className="overflow-x-auto">
-                   <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50 dark:bg-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                         <tr>
-                            <th className="px-6 py-3">Data</th>
-                            <th className="px-6 py-3">Descrição</th>
-                            <th className="px-6 py-3">Valor</th>
-                            <th className="px-6 py-3">Status</th>
-                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                         {payments.length === 0 ? (
-                           <tr>
-                              <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic">Nenhum pagamento registrado ainda.</td>
-                           </tr>
-                         ) : (
-                           payments.map(pay => (
-                             <tr key={pay.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-mono">{pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '-'}</td>
-                                <td className="px-6 py-4 font-medium">{pay.description}</td>
-                                <td className="px-6 py-4 font-bold">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
-                                <td className="px-6 py-4"><Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge></td>
-                             </tr>
-                           ))
-                         )}
-                      </tbody>
-                   </table>
-                </div>
-             </Card>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Se ainda está verificando autenticação
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center">
+            <Layers size={20} className="text-zinc-900" />
+          </div>
+          <Loader2 className="animate-spin text-brand-500" size={20} />
+        </div>
       </div>
     );
   }
@@ -1034,83 +795,117 @@ export default function App() {
   }
 
   const logoText = (
-    <div className="flex items-top">
-      <span className="text-blue-500">F</span>
-      <span className="text-blue-500">R</span>
-      <span className="text-yellow-500">E</span>
-      <span className="text-red-500">E</span>
-      <span className="text-green-500">E</span>
-      <span className="text-blue-500">L</span>
-      <span className="text-blue-500">A</span>
-      <span className="text-blue-500 text-xs mx-1">app</span>
+    <div className="flex items-center gap-2">
+      <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center flex-shrink-0">
+        <Layers size={14} className="text-zinc-900" />
+      </div>
+      <span className="text-white font-bold tracking-tight text-base">freeela</span>
+      <span className="text-brand-500 text-[9px] font-bold tracking-widest uppercase leading-none mt-0.5">app</span>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-20 hidden lg:flex flex-col">
-        <div className="p-6">
-          <h1 className="text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
-            <Layers className="text-blue-600" /> {logoText}
-          </h1>
+      {/* Sidebar — always dark */}
+      <aside className="fixed left-0 top-0 h-full w-60 bg-[#0f0f11] border-r border-[#1e1e24] z-20 hidden lg:flex flex-col">
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-[#1e1e24]">
+          {logoText}
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {[
-            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'leads', label: 'CRM & Leads', icon: Users },
-            { id: 'projects', label: 'Projetos Ativos', icon: Briefcase },
+            { id: 'leads', label: 'Leads', icon: Users },
+            { id: 'projects', label: 'Projetos', icon: Briefcase },
+            { id: 'fiscal', label: 'Área Fiscal', icon: Receipt },
             { id: 'finances', label: 'Financeiro', icon: DollarSign },
           ].map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${activeTab === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
+                ${activeTab === item.id
+                  ? 'bg-brand-500 text-zinc-900 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
+                }`}
             >
-              <item.icon size={18} />
-              <span className="text-sm">{item.label}</span>
+              <item.icon size={16} />
+              <span>{item.label}</span>
             </button>
           ))}
+
+          {/* Seção Comercial */}
+          <div className="pt-4">
+            <button
+              onClick={() => setComercialOpen(!comercialOpen)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              <Building2 size={12} />
+              <span className="text-[10px] font-bold uppercase tracking-widest flex-1 text-left">Comercial</span>
+              <ChevronDown size={12} className={`transition-transform duration-200 ${comercialOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {comercialOpen && (
+              <div className="mt-0.5 space-y-0.5">
+                {[
+                  { id: 'propostas', label: 'Propostas', icon: FileText },
+                  { id: 'contratos', label: 'Contratos', icon: FileSignature },
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
+                      ${activeTab === item.id
+                        ? 'bg-brand-500 text-zinc-900 font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
+                      }`}
+                  >
+                    <item.icon size={16} />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
-        <div className="p-4 space-y-4">
-           <Card className="p-4 bg-slate-900 text-white border-none">
-              <div className="flex items-center gap-2 mb-2">
-                 <div className={`w-2 h-2 rounded-full ${rootDirectory ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}></div>
-                 <span className="text-[10px] font-black tracking-widest uppercase opacity-70">Sincronização Local</span>
-              </div>
-              <p className="text-[10px] text-slate-400 leading-relaxed mb-3">Conecte sua pasta de projetos para automação de diretórios.</p>
-              <Button variant="ghost" className="w-full text-white bg-white/10 hover:bg-white/20 h-8 text-[10px]" onClick={handleSelectRoot}>
-                {rootDirectory ? "Pasta Vinculada" : "Vincular Drive"}
-              </Button>
-           </Card>
+        <div className="p-3 border-t border-[#1e1e24] space-y-2">
+          <div className="rounded-xl bg-white/5 border border-white/8 p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${rootDirectory ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-500">Drive Local</span>
+            </div>
+            <p className="text-[11px] text-zinc-600 leading-relaxed mb-2.5">Vincule sua pasta para automação de diretórios.</p>
+            <button onClick={handleSelectRoot} className="w-full text-[11px] font-medium text-zinc-300 bg-white/8 hover:bg-white/12 rounded-lg py-1.5 transition-colors border border-white/6">
+              {rootDirectory ? "Pasta Vinculada ✓" : "Vincular pasta"}
+            </button>
+          </div>
 
-           <Button variant="danger" className="w-full h-9 text-xs" icon={LogOut} onClick={handleLogout}>
-             Sair
-           </Button>
+          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-sm font-medium">
+            <LogOut size={15} />
+            <span>Sair</span>
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 min-h-screen">
-        <header className="sticky top-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-8 py-4 flex items-center justify-between z-10">
-          <div className="relative w-96 max-w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+      <main className="lg:ml-60 min-h-screen">
+        <header className="sticky top-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800/60 px-8 py-3.5 flex items-center justify-between z-10">
+          <div className="relative w-80 max-w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
             <input
               type="text"
-              placeholder="Pesquisar projetos, clientes ou faturas..."
-              className="w-full bg-slate-100/50 dark:bg-slate-900 border-none rounded-xl py-2 pl-10 pr-4 text-xs focus:ring-2 focus:ring-blue-500 transition-all"
+              placeholder="Pesquisar projetos, clientes..."
+              className="w-full bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2 pl-9 pr-4 text-sm text-zinc-700 dark:text-zinc-300 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ai" className="h-9 px-3 text-xs" onClick={() => handleGenerateDocument('proposal', { name: 'Novo Cliente', demand: 'Redação de Site', value: 2000 })} loading={aiLoading}>
-               <Sparkles size={14}/> Assistente IA
+          <div className="flex items-center gap-3">
+            <Button variant="ai" className="h-9 px-4 text-xs gap-1.5" onClick={() => handleGenerateDocument('proposal', { name: 'Novo Cliente', demand: 'Redação de Site', value: 2000 })} loading={aiLoading}>
+              <Sparkles size={13}/> IA
             </Button>
-            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-black text-xs">
+            <div className="w-8 h-8 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-700 dark:text-brand-400 font-bold text-xs border border-brand-200 dark:border-brand-800">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </div>
           </div>
@@ -1123,84 +918,70 @@ export default function App() {
             </div>
           ) : (
             <>
-              {activeTab === 'dashboard' && <Dashboard />}
-              {activeTab === 'projects' && <ProjectDetail />}
-
               {activeTab === 'leads' && (
-                <div className="space-y-6 animate-in fade-in">
-                   <div className="flex justify-between items-center">
-                     <h2 className="text-2xl font-black">Pipeline de Leads</h2>
-                     <Button icon={Plus} onClick={() => setIsNewLeadModalOpen(true)}>Novo Lead</Button>
-                   </div>
-                   <Card className="overflow-hidden">
-                     <table className="w-full text-left">
-                       <thead className="bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-700">
-                         <tr>
-                           <th className="px-6 py-4">Lead / Empresa</th>
-                           <th className="px-6 py-4">Demanda Principal</th>
-                           <th className="px-6 py-4">Valor Estimado</th>
-                           <th className="px-6 py-4">Status</th>
-                           <th className="px-6 py-4 text-right">Ações</th>
-                         </tr>
-                       </thead>
-                       <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                         {leads.length === 0 ? (
-                           <tr>
-                             <td colSpan="5" className="px-6 py-10 text-center text-slate-400 italic">Nenhum lead cadastrado</td>
-                           </tr>
-                         ) : (
-                           leads.map(lead => (
-                             <tr key={lead.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
-                               <td className="px-6 py-4">
-                                 <div className="font-bold text-sm">{lead.name}</div>
-                                 <div className="text-[10px] text-slate-400">{lead.email}</div>
-                               </td>
-                               <td className="px-6 py-4 text-xs font-medium">{lead.demand}</td>
-                               <td className="px-6 py-4 text-xs font-bold">R$ {(lead.estimated_value || 0).toLocaleString('pt-BR')}</td>
-                               <td className="px-6 py-4"><Badge color={lead.status === 'lead' ? 'purple' : 'yellow'}>{lead.status}</Badge></td>
-                               <td className="px-6 py-4 text-right">
-                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="outline" className="h-8 text-[10px]" onClick={() => convertLeadToProject(lead)}>Converter</Button>
-                                    <Button variant="danger" className="h-8 text-[10px]" onClick={() => openDeclineModal(lead)}>Declinar</Button>
-                                 </div>
-                               </td>
-                             </tr>
-                           ))
-                         )}
-                       </tbody>
-                     </table>
-                   </Card>
-                </div>
+                <LeadsView
+                  allLeads={allLeads}
+                  filter={leadsFilter}
+                  onFilterChange={setLeadsFilter}
+                  onAddLead={() => setIsNewLeadModalOpen(true)}
+                  onConvertLead={convertLeadToProject}
+                  onDeclineLead={openDeclineModal}
+                />
               )}
-
+              {activeTab === 'projects' && (
+                <ProjetosView
+                  projects={projects}
+                  filter={projectsFilter}
+                  onFilterChange={setProjectsFilter}
+                  selectedProject={selectedProject}
+                  onSelectProject={setSelectedProject}
+                  onDeclineProject={openDeclineProjectModal}
+                  onArchiveProject={handleArchiveProject}
+                  onAdvanceWorkflow={handleAdvanceWorkflow}
+                  onUpdateTask={updateTaskStatus}
+                  onGenerateDocument={handleGenerateDocument}
+                  aiLoading={aiLoading}
+                  createProjectFolders={createProjectFolders}
+                />
+              )}
+              {activeTab === 'fiscal' && (
+                <AreaFiscalView
+                  fiscalNotes={fiscalNotes}
+                  projects={projects.filter(p => p.status === 'active')}
+                  userId={userId}
+                  authUser={user}
+                  onNoteCreated={(n) => setFiscalNotes(prev => [n, ...prev])}
+                  onNoteDeleted={(id) => setFiscalNotes(prev => prev.filter(n => n.id !== id))}
+                />
+              )}
               {activeTab === 'finances' && (
-                 <div className="space-y-6">
-                    <h2 className="text-2xl font-black">Visão Financeira</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {projects.map(p => {
-                         const payments = p.payments || [];
-                         const totalPaid = payments.filter(pay => pay.status === 'paid').reduce((acc, pay) => acc + (pay.amount || 0), 0);
-                         return (
-                           <Card key={p.id} className="p-6">
-                              <div className="flex justify-between items-start mb-4">
-                                 <h4 className="font-bold text-sm">{p.client?.name || 'Cliente'}</h4>
-                                 <Badge color="blue">R$ {(p.value || 0).toLocaleString('pt-BR')}</Badge>
-                              </div>
-                              <div className="space-y-2">
-                                 <div className="flex justify-between text-xs">
-                                    <span className="text-slate-500 font-medium">Faturado:</span>
-                                    <span className="font-bold text-green-600">R$ {totalPaid.toLocaleString('pt-BR')}</span>
-                                 </div>
-                                 <div className="w-full bg-slate-100 h-1.5 rounded-full">
-                                    <div className="bg-green-500 h-full" style={{ width: `${(totalPaid / (p.value || 1)) * 100}%` }}></div>
-                                 </div>
-                              </div>
-                              <Button variant="outline" className="w-full mt-6 text-xs" onClick={() => {setSelectedProject(p); setActiveTab('projects')}}>Gerenciar Faturas</Button>
-                           </Card>
-                         );
-                       })}
-                    </div>
-                 </div>
+                <FinanceiroView
+                  projects={projects}
+                  onSelectProject={(p) => { setSelectedProject(p); setActiveTab('projects'); }}
+                />
+              )}
+              {activeTab === 'propostas' && (
+                <PropostasView
+                  proposals={proposals}
+                  projects={projects}
+                  allLeads={allLeads}
+                  userId={userId}
+                  authUser={user}
+                  onProposalCreated={(p) => setProposals(prev => [p, ...prev])}
+                  onProposalUpdated={(u) => setProposals(prev => prev.map(p => p.id === u.id ? u : p))}
+                  onProposalDeleted={(id) => setProposals(prev => prev.filter(p => p.id !== id))}
+                />
+              )}
+              {activeTab === 'contratos' && (
+                <ContratosView
+                  contracts={contracts}
+                  projects={projects}
+                  userId={userId}
+                  authUser={user}
+                  onContractCreated={(c) => setContracts(prev => [c, ...prev])}
+                  onContractUpdated={(u) => setContracts(prev => prev.map(c => c.id === u.id ? u : c))}
+                  onContractDeleted={(id) => setContracts(prev => prev.filter(c => c.id !== id))}
+                />
               )}
             </>
           )}
@@ -1221,20 +1002,20 @@ export default function App() {
       >
         <form className="space-y-4" onSubmit={handleAddLead}>
            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Nome do Cliente/Empresa</label>
-              <input type="text" className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} required />
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Nome do Cliente/Empresa</label>
+              <input type="text" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} required />
            </div>
            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">E-mail de Contato</label>
-              <input type="email" className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} required />
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">E-mail de Contato</label>
+              <input type="email" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} required />
            </div>
            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Demanda Inicial</label>
-              <textarea className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 h-24" placeholder="Descreva brevemente o que o cliente precisa..." value={newLead.demand} onChange={e => setNewLead({...newLead, demand: e.target.value})} required></textarea>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Demanda Inicial</label>
+              <textarea className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all h-24 resize-none" placeholder="Descreva brevemente o que o cliente precisa..." value={newLead.demand} onChange={e => setNewLead({...newLead, demand: e.target.value})} required></textarea>
            </div>
            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Budget Estimado (R$)</label>
-              <input type="number" className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} />
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Budget Estimado (R$)</label>
+              <input type="number" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} />
            </div>
         </form>
       </Modal>
@@ -1259,33 +1040,78 @@ export default function App() {
         )}
       >
         <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 dark:bg-amber-950/20 dark:border-amber-800/40">
             <div className="flex items-start gap-3">
-              <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
+              <AlertCircle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
               <div>
-                <p className="text-sm font-bold text-amber-900">Atenção: Esta ação arquivará o lead</p>
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Esta ação arquivará o lead</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
                   O lead <strong>{leadToDecline?.name}</strong> será marcado como "perdido" e arquivado.
-                  Você não verá mais este lead na lista principal.
                 </p>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">
               Motivo do declínio (opcional)
             </label>
             <textarea
-              className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 h-24"
+              className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all h-24 resize-none"
               placeholder="Ex: Orçamento acima do esperado, prazo incompatível, cliente não respondeu..."
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
             />
           </div>
 
-          <div className="text-xs text-slate-500 italic">
-            💡 Dica: Registrar o motivo ajuda a entender padrões de leads perdidos e melhorar futuras propostas.
+          <p className="text-xs text-zinc-400">
+            Registrar o motivo ajuda a entender padrões de leads perdidos.
+          </p>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isDeclineProjectModalOpen}
+        onClose={() => {
+          setIsDeclineProjectModalOpen(false);
+          setProjectToDecline(null);
+          setDeclineProjectReason('');
+        }}
+        title="Declinar Projeto"
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => {
+              setIsDeclineProjectModalOpen(false);
+              setProjectToDecline(null);
+              setDeclineProjectReason('');
+            }}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDeclineProject}>Confirmar Declínio</Button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-950/20 dark:border-red-800/40">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
+              <div>
+                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Esta ação encerrará o projeto</p>
+                <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                  O projeto <strong>{projectToDecline?.title}</strong> será marcado como inativo e removido da lista de projetos ativos.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">
+              Motivo do declínio (opcional)
+            </label>
+            <textarea
+              className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all h-24 resize-none"
+              placeholder="Ex: Cliente cancelou, proposta não aprovada, projeto inviável..."
+              value={declineProjectReason}
+              onChange={(e) => setDeclineProjectReason(e.target.value)}
+            />
           </div>
         </div>
       </Modal>
