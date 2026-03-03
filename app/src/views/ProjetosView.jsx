@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Briefcase, X, Users, CreditCard, FolderOpen, Sparkles,
   CheckCircle2, ChevronDown, ChevronRight, Calendar, ShieldCheck,
-  DollarSign, Archive, ArrowRight
+  DollarSign, Archive, ArrowRight, Plus, Trash2, Pencil,
+  ChevronUp, Minus, ArrowDown, Check, Square, CheckSquare,
 } from 'lucide-react';
 
 const WORKFLOW_STEPS = [
@@ -14,6 +15,12 @@ const WORKFLOW_STEPS = [
   { id: 6, label: 'Pagamento',    key: 'payment',         icon: <DollarSign size={14} />,  desc: 'Faturamento e conciliação financeira' },
   { id: 7, label: 'Finalização',  key: 'finalization',    icon: <CheckCircle2 size={14} />, desc: 'Entrega final e coleta de feedback' },
 ];
+
+const PRIORITY_COLORS = {
+  alta:   { color: 'text-red-500',   icon: ChevronUp,  badge: 'bg-red-50 text-red-600 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900' },
+  normal: { color: 'text-zinc-400',  icon: Minus,       badge: 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700' },
+  baixa:  { color: 'text-blue-500',  icon: ArrowDown,   badge: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900' },
+};
 
 const getStepNumber = (stepKey) => {
   const s = WORKFLOW_STEPS.find(s => s.key === stepKey);
@@ -61,17 +68,177 @@ const Button = ({ children, onClick, variant = 'primary', className = '', icon: 
   );
 };
 
+// ── Checklist Card (expandable with subtasks) ──
+function ChecklistCard({ cl, onUpdateStatus, onDelete, onAddItem, onToggleItem, onDeleteItem, onUpdateChecklist }) {
+  const [expanded, setExpanded] = useState(false);
+  const [newItemTitle, setNewItemTitle] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(cl.title);
+  const [editPriority, setEditPriority] = useState(cl.priority);
+
+  const items = cl.checklist_items || [];
+  const doneCount = items.filter(i => i.completed).length;
+  const totalCount = items.length;
+  const pr = PRIORITY_COLORS[cl.priority] || PRIORITY_COLORS.normal;
+  const PrIcon = pr.icon;
+
+  const handleAddItem = async (e) => {
+    e.preventDefault();
+    if (!newItemTitle.trim()) return;
+    await onAddItem(cl.id, newItemTitle.trim());
+    setNewItemTitle('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTitle.trim()) return;
+    await onUpdateChecklist(cl.id, { title: editTitle.trim(), priority: editPriority });
+    setEditing(false);
+  };
+
+  return (
+    <Card className="overflow-hidden hover:shadow-elevated transition-shadow">
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start gap-2">
+          <button onClick={() => setExpanded(!expanded)} className="mt-0.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+            <ChevronRight size={14} className={`transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
+          </button>
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <div className="space-y-2">
+                <input
+                  autoFocus
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveEdit()}
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                />
+                <div className="flex items-center gap-2">
+                  <select value={editPriority} onChange={e => setEditPriority(e.target.value)}
+                    className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs focus:outline-none">
+                    <option value="alta">Alta</option>
+                    <option value="normal">Normal</option>
+                    <option value="baixa">Baixa</option>
+                  </select>
+                  <button onClick={handleSaveEdit} className="text-xs font-medium text-brand-500 hover:text-brand-600 px-2 py-1 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-900/20">Salvar</button>
+                  <button onClick={() => { setEditing(false); setEditTitle(cl.title); setEditPriority(cl.priority); }} className="text-xs text-zinc-400 hover:text-zinc-600 px-2 py-1">Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 leading-snug cursor-pointer" onClick={() => setExpanded(!expanded)}>{cl.title}</p>
+                {totalCount > 0 && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex-1 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden max-w-[80px]">
+                      <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${totalCount ? (doneCount / totalCount) * 100 : 0}%` }} />
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-mono">{doneCount}/{totalCount}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {!editing && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${pr.badge}`}>
+                <PrIcon size={10} />
+              </span>
+              <button onClick={() => setEditing(true)} className="p-1 text-zinc-300 hover:text-zinc-500 dark:hover:text-zinc-300 rounded transition-colors">
+                <Pencil size={12} />
+              </button>
+              <button onClick={() => onDelete(cl.id)} className="p-1 text-zinc-300 hover:text-red-500 rounded transition-colors">
+                <Trash2 size={12} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded: subtasks */}
+      {expanded && (
+        <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-3 bg-zinc-50/50 dark:bg-zinc-800/20 space-y-1.5">
+          {items.map(item => (
+            <div key={item.id} className="flex items-center gap-2 group">
+              <button onClick={() => onToggleItem(item.id, !item.completed)} className="flex-shrink-0 text-zinc-400 hover:text-brand-500 transition-colors">
+                {item.completed ? <CheckSquare size={15} className="text-emerald-500" /> : <Square size={15} />}
+              </button>
+              <span className={`text-sm flex-1 ${item.completed ? 'line-through text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{item.title}</span>
+              <button onClick={() => onDeleteItem(item.id)} className="p-0.5 text-zinc-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          <form onSubmit={handleAddItem} className="flex items-center gap-2 pt-1">
+            <Plus size={14} className="text-zinc-300 flex-shrink-0" />
+            <input
+              value={newItemTitle}
+              onChange={e => setNewItemTitle(e.target.value)}
+              placeholder="Adicionar subtarefa..."
+              className="flex-1 bg-transparent text-sm text-zinc-700 dark:text-zinc-300 placeholder-zinc-400 outline-none"
+            />
+          </form>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── Inline Add (Trello-style) ──
+function InlineAdd({ onAdd, placeholder = 'Nome do checklist...' }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    await onAdd(title.trim());
+    setTitle('');
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all">
+        <Plus size={14} /> Adicionar checklist
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <input
+        autoFocus
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        onKeyDown={e => e.key === 'Escape' && setOpen(false)}
+        placeholder={placeholder}
+        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+      />
+      <div className="flex gap-2">
+        <button type="submit" className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-zinc-900 hover:bg-brand-400 transition-all">Adicionar</button>
+        <button type="button" onClick={() => { setOpen(false); setTitle(''); }} className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">Cancelar</button>
+      </div>
+    </form>
+  );
+}
+
+
 export default function ProjetosView({
   projects, filter, onFilterChange, selectedProject, onSelectProject,
   onDeclineProject, onArchiveProject, onAdvanceWorkflow, onUpdateTask,
   onGenerateDocument, aiLoading, createProjectFolders,
+  // Checklist props
+  onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
+  onAddChecklistItem, onToggleChecklistItem, onDeleteChecklistItem,
 }) {
   const [subTab, setSubTab] = useState('workflow');
 
   const proj = selectedProject;
   const stepNumber = proj ? getStepNumber(proj.current_step) : 1;
-  const tasks    = proj ? (proj.tasks || []) : [];
-  const payments = proj ? (proj.payments || []) : [];
+  const tasks      = proj ? (proj.tasks || []) : [];
+  const checklists = proj ? (proj.checklists || []) : [];
+  const payments   = proj ? (proj.payments || []) : [];
 
   const counts = {
     active:   projects.filter(p => p.status === 'active').length,
@@ -88,11 +255,23 @@ export default function ProjetosView({
 
   const handleBack = () => onSelectProject(null);
 
+  const handleInlineAdd = async (title) => {
+    if (proj && onCreateChecklist) {
+      await onCreateChecklist(proj.id, title);
+    }
+  };
+
   // ── Detail view ──────────────────────────────────────────
   if (proj) {
     const paidTotal = payments.filter(p => p.status === 'paid').reduce((a, p) => a + (p.amount || 0), 0);
     const pendingTotal = Math.max(0, (proj.value || 0) - paidTotal);
     const paidPct = proj.value ? Math.min(100, Math.round((paidTotal / proj.value) * 100)) : 0;
+
+    // Merge tasks + checklists for kanban
+    const kanbanItems = [
+      ...tasks.map(t => ({ ...t, _type: 'task' })),
+      ...checklists.map(c => ({ ...c, _type: 'checklist' })),
+    ];
 
     return (
       <div className="space-y-6 animate-in fade-in">
@@ -164,12 +343,8 @@ export default function ProjetosView({
           <div className="space-y-8 py-2">
             {/* Timeline steps */}
             <div className="relative">
-              {/* Track line */}
               <div className="absolute top-5 left-0 right-0 h-px bg-zinc-100 dark:bg-zinc-800 z-0" />
-              <div
-                className="absolute top-5 left-0 h-px bg-brand-500 z-0 transition-all duration-700"
-                style={{ width: `${((stepNumber - 1) / 6) * 100}%` }}
-              />
+              <div className="absolute top-5 left-0 h-px bg-brand-500 z-0 transition-all duration-700" style={{ width: `${((stepNumber - 1) / 6) * 100}%` }} />
               <div className="relative z-10 flex justify-between">
                 {WORKFLOW_STEPS.map(s => {
                   const isActive = stepNumber === s.id;
@@ -194,32 +369,31 @@ export default function ProjetosView({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Checklist */}
+              {/* Checklist section */}
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                    {WORKFLOW_STEPS[stepNumber - 1]?.label} — Checklist
-                  </h3>
-                  <Badge color="blue">{tasks.filter(t => t.status === 'todo').length} pendentes</Badge>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Checklists</h3>
+                  <Badge color="blue">{checklists.filter(c => c.status !== 'done').length} pendentes</Badge>
                 </div>
-                <div className="space-y-2">
-                  {tasks.filter(t => t.status === 'todo').length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-6">
-                      <CheckCircle2 className="text-emerald-400" size={24} />
-                      <p className="text-sm text-zinc-400">Tudo concluído nesta etapa</p>
+                <div className="space-y-2.5">
+                  {checklists.length === 0 && (
+                    <div className="flex flex-col items-center gap-2 py-4">
+                      <p className="text-sm text-zinc-400">Nenhum checklist ainda</p>
                     </div>
-                  ) : (
-                    tasks.filter(t => t.status === 'todo').map(task => (
-                      <div key={task.id}
-                        className="flex items-center gap-3 p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 hover:border-brand-200 dark:hover:border-brand-800 transition-all group cursor-pointer"
-                        onClick={() => onUpdateTask(proj.id, task.id, 'done')}>
-                        <div className="w-4.5 h-4.5 rounded-md border-2 border-zinc-300 dark:border-zinc-600 group-hover:border-brand-500 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20 transition-all flex items-center justify-center flex-shrink-0">
-                          <div className="w-2 h-2 rounded-sm bg-transparent group-hover:bg-brand-500 transition-all" />
-                        </div>
-                        <span className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">{task.title}</span>
-                      </div>
-                    ))
                   )}
+                  {checklists.map(cl => (
+                    <ChecklistCard
+                      key={cl.id}
+                      cl={cl}
+                      onUpdateStatus={onUpdateChecklistStatus}
+                      onDelete={onDeleteChecklist}
+                      onAddItem={onAddChecklistItem}
+                      onToggleItem={onToggleChecklistItem}
+                      onDeleteItem={onDeleteChecklistItem}
+                      onUpdateChecklist={onUpdateChecklist}
+                    />
+                  ))}
+                  <InlineAdd onAdd={handleInlineAdd} />
                 </div>
               </Card>
 
@@ -233,20 +407,19 @@ export default function ProjetosView({
                       <Calendar className="text-violet-500" size={18} />
                     </div>
                     <div>
-                      <p className="font-semibold text-sm text-zinc-800 dark:text-zinc-200">Briefing Técnico</p>
+                      <p className="font-semibold text-sm text-zinc-800 dark:text-zinc-200">Briefing Tecnico</p>
                       <p className="text-[11px] text-zinc-400 mt-0.5">Gere perguntas de alinhamento</p>
                     </div>
                     <ArrowRight className="ml-auto text-zinc-300 group-hover:text-violet-400 transition-colors" size={15} />
                   </button>
-
                   <button onClick={() => onGenerateDocument('contract', proj)}
                     className="w-full p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                       <ShieldCheck className="text-blue-500" size={18} />
                     </div>
                     <div>
-                      <p className="font-semibold text-sm text-zinc-800 dark:text-zinc-200">Contrato Jurídico</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Rascunho com cláusulas BR</p>
+                      <p className="font-semibold text-sm text-zinc-800 dark:text-zinc-200">Contrato Juridico</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Rascunho com clausulas BR</p>
                     </div>
                     <ArrowRight className="ml-auto text-zinc-300 group-hover:text-blue-400 transition-colors" size={15} />
                   </button>
@@ -258,46 +431,71 @@ export default function ProjetosView({
 
         {/* ── KANBAN TAB ── */}
         {subTab === 'kanban' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 py-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 py-2">
             {[
-              { status: 'todo',  label: 'A Fazer',   color: 'text-zinc-400',    dot: 'bg-zinc-300' },
-              { status: 'doing', label: 'Em Progresso', color: 'text-amber-500', dot: 'bg-amber-400' },
-              { status: 'done',  label: 'Concluído',  color: 'text-emerald-500', dot: 'bg-emerald-400' },
-            ].map(col => (
-              <div key={col.status} className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 px-1">
-                  <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
-                  <h4 className={`text-xs font-bold uppercase tracking-widest ${col.color}`}>{col.label}</h4>
-                  <span className="ml-auto text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-full px-2 py-0.5">
-                    {tasks.filter(t => t.status === col.status).length}
-                  </span>
+              { status: 'todo',    label: 'A Fazer',      color: 'text-zinc-400',    dot: 'bg-zinc-300',    prev: null,      next: 'doing' },
+              { status: 'doing',   label: 'Em Progresso', color: 'text-amber-500',   dot: 'bg-amber-400',   prev: 'todo',    next: 'waiting' },
+              { status: 'waiting', label: 'Aguardando',   color: 'text-blue-500',    dot: 'bg-blue-400',    prev: 'doing',   next: 'done' },
+              { status: 'done',    label: 'Concluido',    color: 'text-emerald-500', dot: 'bg-emerald-400', prev: 'waiting', next: null },
+            ].map(col => {
+              const colTasks = kanbanItems.filter(t => t.status === col.status);
+              return (
+                <div key={col.status} className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 px-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                    <h4 className={`text-xs font-bold uppercase tracking-widest ${col.color}`}>{col.label}</h4>
+                    <span className="ml-auto text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-full px-2 py-0.5">
+                      {colTasks.length}
+                    </span>
+                  </div>
+                  <div className="flex-1 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-3 space-y-2 min-h-[200px]">
+                    {colTasks.map(item => {
+                      if (item._type === 'checklist') {
+                        return (
+                          <ChecklistCard
+                            key={`cl-${item.id}`}
+                            cl={item}
+                            onUpdateStatus={onUpdateChecklistStatus}
+                            onDelete={onDeleteChecklist}
+                            onAddItem={onAddChecklistItem}
+                            onToggleItem={onToggleChecklistItem}
+                            onDeleteItem={onDeleteChecklistItem}
+                            onUpdateChecklist={onUpdateChecklist}
+                          />
+                        );
+                      }
+                      // Regular task card
+                      return (
+                        <Card key={`task-${item.id}`} className="p-4 hover:shadow-elevated transition-shadow cursor-move">
+                          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-3 leading-snug">{item.title}</p>
+                          <div className="flex justify-between items-center">
+                            <Badge color="slate">{item.task_type || 'Tarefa'}</Badge>
+                            <div className="flex gap-1">
+                              {col.prev && (
+                                <button onClick={() => onUpdateTask(proj.id, item.id, col.prev)}
+                                  className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg transition-colors">
+                                  <ChevronDown size={13} className="text-zinc-400" />
+                                </button>
+                              )}
+                              {col.next && (
+                                <button onClick={() => onUpdateTask(proj.id, item.id, col.next)}
+                                  className="p-1.5 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors">
+                                  <ChevronRight size={13} className="text-brand-500" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                    {/* Inline add in "A Fazer" column */}
+                    {col.status === 'todo' && (
+                      <InlineAdd onAdd={handleInlineAdd} />
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-3 space-y-2 min-h-[200px]">
-                  {tasks.filter(t => t.status === col.status).map(task => (
-                    <Card key={task.id} className="p-4 hover:shadow-elevated transition-shadow cursor-move">
-                      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-3 leading-snug">{task.title}</p>
-                      <div className="flex justify-between items-center">
-                        <Badge color="slate">{task.task_type || 'Técnica'}</Badge>
-                        <div className="flex gap-1">
-                          {col.status !== 'todo' && (
-                            <button onClick={() => onUpdateTask(proj.id, task.id, col.status === 'done' ? 'doing' : 'todo')}
-                              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg transition-colors">
-                              <ChevronDown size={13} className="text-zinc-400" />
-                            </button>
-                          )}
-                          {col.status !== 'done' && (
-                            <button onClick={() => onUpdateTask(proj.id, task.id, col.status === 'todo' ? 'doing' : 'done')}
-                              className="p-1.5 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors">
-                              <ChevronRight size={13} className="text-brand-500" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -313,34 +511,27 @@ export default function ProjetosView({
                 </div>
                 <p className="text-[10px] text-zinc-500 mt-1.5 font-mono">{paidPct}% faturado</p>
               </div>
-
               <Card className="p-5">
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-2">Já Faturado</p>
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                  R$ {paidTotal.toLocaleString('pt-BR')}
-                </p>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-2">Ja Faturado</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">R$ {paidTotal.toLocaleString('pt-BR')}</p>
                 <p className="text-[11px] text-zinc-400 mt-1">pagamentos confirmados</p>
               </Card>
-
               <Card className="p-5">
                 <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-2">Saldo Pendente</p>
-                <p className="text-2xl font-bold text-amber-500 dark:text-amber-400 font-mono">
-                  R$ {pendingTotal.toLocaleString('pt-BR')}
-                </p>
+                <p className="text-2xl font-bold text-amber-500 dark:text-amber-400 font-mono">R$ {pendingTotal.toLocaleString('pt-BR')}</p>
                 <p className="text-[11px] text-zinc-400 mt-1">a receber</p>
               </Card>
             </div>
-
             <Card>
               <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
-                <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Histórico de Lançamentos</h4>
+                <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Historico de Lancamentos</h4>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 text-[10px] font-bold uppercase tracking-widest">
                     <tr>
                       <th className="px-6 py-3.5">Data</th>
-                      <th className="px-6 py-3.5">Descrição</th>
+                      <th className="px-6 py-3.5">Descricao</th>
                       <th className="px-6 py-3.5">Valor</th>
                       <th className="px-6 py-3.5">Status</th>
                     </tr>
@@ -351,16 +542,10 @@ export default function ProjetosView({
                     ) : (
                       payments.map(pay => (
                         <tr key={pay.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-6 py-4 font-mono text-sm text-zinc-500">
-                            {pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}
-                          </td>
+                          <td className="px-6 py-4 font-mono text-sm text-zinc-500">{pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}</td>
                           <td className="px-6 py-4 font-medium text-zinc-700 dark:text-zinc-300">{pay.description}</td>
-                          <td className="px-6 py-4 font-semibold font-mono text-zinc-900 dark:text-zinc-100">
-                            R$ {(pay.amount || 0).toLocaleString('pt-BR')}
-                          </td>
-                          <td className="px-6 py-4">
-                            <Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge>
-                          </td>
+                          <td className="px-6 py-4 font-semibold font-mono text-zinc-900 dark:text-zinc-100">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
+                          <td className="px-6 py-4"><Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge></td>
                         </tr>
                       ))
                     )}
@@ -424,6 +609,7 @@ export default function ProjetosView({
             const stepData = WORKFLOW_STEPS[sn - 1];
             const paidAmount = (p.payments || []).filter(pay => pay.status === 'paid').reduce((a, pay) => a + (pay.amount || 0), 0);
             const paidPct = p.value ? Math.min(100, Math.round((paidAmount / p.value) * 100)) : 0;
+            const clCount = (p.checklists || []).length;
 
             return (
               <div key={p.id}
@@ -446,10 +632,8 @@ export default function ProjetosView({
                     <span className="font-semibold">{Math.round((sn / 7) * 100)}%</span>
                   </div>
                   <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${sn >= 7 ? 'bg-emerald-500' : 'bg-brand-500'}`}
-                      style={{ width: `${(sn / 7) * 100}%` }}
-                    />
+                    <div className={`h-full rounded-full transition-all duration-700 ${sn >= 7 ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                      style={{ width: `${(sn / 7) * 100}%` }} />
                   </div>
                 </div>
 
@@ -459,24 +643,27 @@ export default function ProjetosView({
                     <p className="text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100">
                       R$ {(p.value || 0).toLocaleString('pt-BR')}
                     </p>
-                    {paidPct > 0 && (
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium font-mono">{paidPct}% faturado</p>
-                    )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {paidPct > 0 && (
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium font-mono">{paidPct}% faturado</p>
+                      )}
+                      {clCount > 0 && (
+                        <span className="text-[10px] text-zinc-400 font-medium">{clCount} checklist{clCount > 1 ? 's' : ''}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {p.status === 'active' && (
                       <button
                         className="text-[10px] font-semibold text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                        onClick={e => { e.stopPropagation(); onDeclineProject(p); }}
-                      >
+                        onClick={e => { e.stopPropagation(); onDeclineProject(p); }}>
                         Declinar
                       </button>
                     )}
                     {p.status === 'active' && sn >= 7 && (
                       <button
                         className="text-[10px] font-semibold text-zinc-400 hover:text-zinc-600 px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        onClick={e => { e.stopPropagation(); onArchiveProject(p.id); }}
-                      >
+                        onClick={e => { e.stopPropagation(); onArchiveProject(p.id); }}>
                         Arquivar
                       </button>
                     )}

@@ -185,7 +185,7 @@ export async function getProjects(
 ) {
   let q = supabase
     .from('projects')
-    .select('*, client:clients(*), tasks(*), payments(*)')
+    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*))')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -197,7 +197,7 @@ export async function getProjects(
 export async function getProjectById(projectId: string) {
   return supabase
     .from('projects')
-    .select('*, client:clients(*), tasks(*), payments(*), documents(*), workflow_history(*)')
+    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*)')
     .eq('id', projectId)
     .single()
 }
@@ -248,6 +248,77 @@ export async function advanceProjectWorkflow(projectId: string) {
 }
 
 // ============================================
+// CHECKLISTS
+// ============================================
+
+export async function getChecklists(userId: string) {
+  return supabase
+    .from('checklists')
+    .select('*, project:projects(id, title, client:clients(name)), checklist_items(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+}
+
+export async function createChecklist(userId: string, data: {
+  project_id: string
+  title: string
+  description?: string
+  priority?: string
+  status?: string
+  due_date?: string
+}) {
+  return supabase
+    .from('checklists')
+    .insert({ user_id: userId, ...data })
+    .select('*, project:projects(id, title, client:clients(name)), checklist_items(*)')
+    .single()
+}
+
+export async function updateChecklist(checklistId: string, updates: {
+  title?: string
+  description?: string
+  priority?: string
+  status?: string
+  due_date?: string
+}) {
+  return supabase
+    .from('checklists')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', checklistId)
+    .select('*, project:projects(id, title, client:clients(name)), checklist_items(*)')
+    .single()
+}
+
+export async function deleteChecklist(checklistId: string) {
+  return supabase.from('checklists').delete().eq('id', checklistId)
+}
+
+// ============================================
+// CHECKLIST ITEMS (subtarefas)
+// ============================================
+
+export async function createChecklistItem(checklistId: string, title: string) {
+  return supabase
+    .from('checklist_items')
+    .insert({ checklist_id: checklistId, title })
+    .select()
+    .single()
+}
+
+export async function toggleChecklistItem(itemId: string, completed: boolean) {
+  return supabase
+    .from('checklist_items')
+    .update({ completed })
+    .eq('id', itemId)
+    .select()
+    .single()
+}
+
+export async function deleteChecklistItem(itemId: string) {
+  return supabase.from('checklist_items').delete().eq('id', itemId)
+}
+
+// ============================================
 // TAREFAS
 // ============================================
 
@@ -259,7 +330,7 @@ export async function getTasksByProject(projectId: string) {
     .order('position', { ascending: true })
 }
 
-export async function updateTaskStatus(taskId: string, status: 'todo' | 'doing' | 'done') {
+export async function updateTaskStatus(taskId: string, status: 'todo' | 'doing' | 'waiting' | 'done') {
   return supabase.from('tasks').update({ status }).eq('id', taskId)
 }
 

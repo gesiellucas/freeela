@@ -35,6 +35,7 @@ import {
   UploadCloud,
   Music,
   Paperclip,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // Importar Supabase client e funções
@@ -73,8 +74,16 @@ import {
   deleteMediaFile,
   uploadFile,
   deleteStorageFile,
+  getChecklists,
+  createChecklist,
+  updateChecklist,
+  deleteChecklist,
+  createChecklistItem,
+  toggleChecklistItem,
+  deleteChecklistItem,
 } from './lib/supabase';
 
+import PainelView    from './views/PainelView';
 import LeadsView     from './views/LeadsView';
 import ProjetosView  from './views/ProjetosView';
 import AreaFiscalView from './views/AreaFiscalView';
@@ -357,9 +366,10 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   // Data State
-  const [activeTab, setActiveTab] = useState('leads');
+  const [activeTab, setActiveTab] = useState('painel');
   const [leads, setLeads] = useState([]);
   const [allLeads, setAllLeads] = useState([]);
+  const [checklists, setChecklists] = useState([]);
   const [projects, setProjects] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [contracts, setContracts] = useState([]);
@@ -444,12 +454,13 @@ export default function App() {
 
     setDataLoading(true);
     try {
-      const [leadsRes, projectsRes, proposalsRes, contractsRes, fiscalRes] = await Promise.all([
+      const [leadsRes, projectsRes, proposalsRes, contractsRes, fiscalRes, checklistsRes] = await Promise.all([
         getLeads(userId),
         getProjects(userId, 'all'),
         getProposals(userId),
         getContracts(userId),
         getFiscalNotes(userId),
+        getChecklists(userId),
       ]);
 
       if (leadsRes.data) {
@@ -460,6 +471,7 @@ export default function App() {
       if (proposalsRes.data) setProposals(proposalsRes.data);
       if (contractsRes.data) setContracts(contractsRes.data);
       if (fiscalRes.data) setFiscalNotes(fiscalRes.data);
+      if (checklistsRes.data) setChecklists(checklistsRes.data);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     } finally {
@@ -471,6 +483,121 @@ export default function App() {
     await archiveProjectAPI(projectId);
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: 'archived', is_active: false } : p));
     if (selectedProject?.id === projectId) setSelectedProject(null);
+  };
+
+  // --- Checklist handlers ---
+
+  const updateProjectChecklists = (projectId, updater) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, checklists: updater(p.checklists || []) } : p));
+    if (selectedProject?.id === projectId) {
+      setSelectedProject(prev => ({ ...prev, checklists: updater(prev.checklists || []) }));
+    }
+  };
+
+  const handleCreateChecklist = async (projectId, title) => {
+    if (!userId) return;
+    try {
+      const { data, error } = await createChecklist(userId, { project_id: projectId, title });
+      if (error) throw error;
+      if (data) {
+        updateProjectChecklists(projectId, cls => [...cls, data]);
+        setChecklists(prev => [data, ...prev]);
+      }
+    } catch (err) {
+      console.error('Erro ao criar checklist:', err);
+    }
+  };
+
+  const handleUpdateChecklist = async (checklistId, updates) => {
+    try {
+      const { data, error } = await updateChecklist(checklistId, updates);
+      if (error) throw error;
+      if (data) {
+        const pid = data.project?.id || data.project_id;
+        updateProjectChecklists(pid, cls => cls.map(c => c.id === checklistId ? { ...c, ...data } : c));
+        setChecklists(prev => prev.map(c => c.id === checklistId ? { ...c, ...data } : c));
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar checklist:', err);
+    }
+  };
+
+  const handleUpdateChecklistStatus = async (checklistId, newStatus) => {
+    await handleUpdateChecklist(checklistId, { status: newStatus });
+  };
+
+  const handleDeleteChecklist = async (checklistId) => {
+    try {
+      const { error } = await deleteChecklist(checklistId);
+      if (error) throw error;
+      setProjects(prev => prev.map(p => ({
+        ...p,
+        checklists: (p.checklists || []).filter(c => c.id !== checklistId)
+      })));
+      if (selectedProject) {
+        setSelectedProject(prev => ({
+          ...prev,
+          checklists: (prev.checklists || []).filter(c => c.id !== checklistId)
+        }));
+      }
+      setChecklists(prev => prev.filter(c => c.id !== checklistId));
+    } catch (err) {
+      console.error('Erro ao deletar checklist:', err);
+    }
+  };
+
+  const handleAddChecklistItem = async (checklistId, title) => {
+    try {
+      const { data, error } = await createChecklistItem(checklistId, title);
+      if (error) throw error;
+      if (data) {
+        const updateItems = cls => cls.map(c =>
+          c.id === checklistId ? { ...c, checklist_items: [...(c.checklist_items || []), data] } : c
+        );
+        setProjects(prev => prev.map(p => ({ ...p, checklists: updateItems(p.checklists || []) })));
+        if (selectedProject) {
+          setSelectedProject(prev => ({ ...prev, checklists: updateItems(prev.checklists || []) }));
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao adicionar item:', err);
+    }
+  };
+
+  const handleToggleChecklistItem = async (itemId, completed) => {
+    try {
+      const { data, error } = await toggleChecklistItem(itemId, completed);
+      if (error) throw error;
+      if (data) {
+        const updateItems = cls => cls.map(c => ({
+          ...c,
+          checklist_items: (c.checklist_items || []).map(i => i.id === itemId ? { ...i, completed } : i)
+        }));
+        setProjects(prev => prev.map(p => ({ ...p, checklists: updateItems(p.checklists || []) })));
+        if (selectedProject) {
+          setSelectedProject(prev => ({ ...prev, checklists: updateItems(prev.checklists || []) }));
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao toggle item:', err);
+    }
+  };
+
+  const handleDeleteChecklistItem = async (itemId) => {
+    try {
+      const { error } = await deleteChecklistItem(itemId);
+      if (error) throw error;
+      const updateItems = cls => cls.map(c => ({
+        ...c,
+        checklist_items: (c.checklist_items || []).filter(i => i.id !== itemId)
+      }));
+      setProjects(prev => prev.map(p => ({ ...p, checklists: updateItems(p.checklists || []) })));
+      if (selectedProject) {
+        setSelectedProject(prev => ({ ...prev, checklists: updateItems(prev.checklists || []) }));
+      }
+    } catch (err) {
+      console.error('Erro ao deletar item:', err);
+    }
   };
 
   // --- Gemini API ---
@@ -766,6 +893,7 @@ export default function App() {
     setUserId(null);
     setLeads([]);
     setAllLeads([]);
+    setChecklists([]);
     setProjects([]);
     setProposals([]);
     setContracts([]);
@@ -816,6 +944,7 @@ export default function App() {
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {[
+            { id: 'painel', label: 'Painel', icon: LayoutDashboard },
             { id: 'leads', label: 'Leads', icon: Users },
             { id: 'projects', label: 'Projetos', icon: Briefcase },
             { id: 'fiscal', label: 'Área Fiscal', icon: Receipt },
@@ -918,6 +1047,19 @@ export default function App() {
             </div>
           ) : (
             <>
+              {activeTab === 'painel' && (
+                <PainelView
+                  checklists={checklists}
+                  projects={projects}
+                  userId={userId}
+                  onChecklistCreated={(c) => setChecklists(prev => [c, ...prev])}
+                  onChecklistUpdated={(u) => setChecklists(prev => prev.map(c => c.id === u.id ? u : c))}
+                  onChecklistDeleted={(id) => setChecklists(prev => prev.filter(c => c.id !== id))}
+                  createChecklistFn={createChecklist}
+                  updateChecklistFn={updateChecklist}
+                  deleteChecklistFn={deleteChecklist}
+                />
+              )}
               {activeTab === 'leads' && (
                 <LeadsView
                   allLeads={allLeads}
@@ -942,6 +1084,13 @@ export default function App() {
                   onGenerateDocument={handleGenerateDocument}
                   aiLoading={aiLoading}
                   createProjectFolders={createProjectFolders}
+                  onCreateChecklist={handleCreateChecklist}
+                  onUpdateChecklist={handleUpdateChecklist}
+                  onDeleteChecklist={handleDeleteChecklist}
+                  onUpdateChecklistStatus={handleUpdateChecklistStatus}
+                  onAddChecklistItem={handleAddChecklistItem}
+                  onToggleChecklistItem={handleToggleChecklistItem}
+                  onDeleteChecklistItem={handleDeleteChecklistItem}
                 />
               )}
               {activeTab === 'fiscal' && (
