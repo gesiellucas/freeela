@@ -29,6 +29,15 @@ function createWindow() {
   }
 }
 
+// IPC: Trazer janela ao foco (usado pelo Pomodoro ao fim do timer)
+ipcMain.handle('focus-window', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
+
 // IPC: Selecionar pasta raiz
 ipcMain.handle('select-directory', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {

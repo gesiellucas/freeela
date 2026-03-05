@@ -36,6 +36,7 @@ import {
   Music,
   Paperclip,
   LayoutDashboard,
+  Timer,
 } from 'lucide-react';
 
 // Importar Supabase client e funções
@@ -90,6 +91,7 @@ import AreaFiscalView from './views/AreaFiscalView';
 import FinanceiroView from './views/FinanceiroView';
 import PropostasView from './views/PropostasView';
 import ContratosView from './views/ContratosView';
+import PomodoroView from './views/PomodoroView';
 
 // --- Constantes e Templates ---
 
@@ -933,6 +935,7 @@ export default function App() {
             { id: 'projects', label: 'Projetos', icon: Briefcase },
             { id: 'fiscal', label: 'Área Fiscal', icon: Receipt },
             { id: 'finances', label: 'Financeiro', icon: DollarSign },
+            { id: 'pomodoro', label: 'Pomodoro', icon: Timer },
           ].map(item => (
             <button
               key={item.id}
@@ -1104,6 +1107,9 @@ export default function App() {
                   onProposalUpdated={(u) => setProposals(prev => prev.map(p => p.id === u.id ? u : p))}
                   onProposalDeleted={(id) => setProposals(prev => prev.filter(p => p.id !== id))}
                 />
+              )}
+              {activeTab === 'pomodoro' && (
+                <PomodoroView />
               )}
               {activeTab === 'contratos' && (
                 <ContratosView
