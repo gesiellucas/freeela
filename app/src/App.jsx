@@ -83,9 +83,9 @@ import {
   deleteChecklistItem,
 } from './lib/supabase';
 
-import PainelView    from './views/PainelView';
-import LeadsView     from './views/LeadsView';
-import ProjetosView  from './views/ProjetosView';
+import PainelView from './views/PainelView';
+import LeadsView from './views/LeadsView';
+import ProjetosView from './views/ProjetosView';
 import AreaFiscalView from './views/AreaFiscalView';
 import FinanceiroView from './views/FinanceiroView';
 import PropostasView from './views/PropostasView';
@@ -175,7 +175,7 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
       <Card className="w-full max-w-lg overflow-hidden shadow-elevated animate-in zoom-in-95">
         <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">{title}</h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X size={18}/></button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X size={18} /></button>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {children}
@@ -197,9 +197,9 @@ const AIModal = ({ isOpen, onClose, title, content, onApply, type }) => {
       <Card className="w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-elevated border-violet-200/50 dark:border-violet-900/30">
         <div className="px-6 py-4 border-b border-violet-100 dark:border-violet-900/30 flex justify-between items-center bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/20">
           <h3 className="font-semibold flex items-center gap-2.5 text-violet-700 dark:text-violet-300 tracking-tight">
-            <Sparkles size={18} className="text-violet-500"/> {title}
+            <Sparkles size={18} className="text-violet-500" /> {title}
           </h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-white/60 dark:hover:bg-zinc-800 transition-colors"><X size={18}/></button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-white/60 dark:hover:bg-zinc-800 transition-colors"><X size={18} /></button>
         </div>
         <div className="p-8 overflow-y-auto flex-1">
           <div className="max-w-none text-sm leading-relaxed whitespace-pre-wrap font-mono text-zinc-700 dark:text-zinc-300">
@@ -210,7 +210,7 @@ const AIModal = ({ isOpen, onClose, title, content, onApply, type }) => {
           <p className="text-xs text-zinc-400 font-medium">Gemini 2.5 Flash · Rascunho para revisão</p>
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose}>Descartar</Button>
-            {onApply && <Button variant="ai" onClick={onApply}><Sparkles size={14}/> Utilizar este Conteúdo</Button>}
+            {onApply && <Button variant="ai" onClick={onApply}><Sparkles size={14} /> Utilizar este Conteúdo</Button>}
           </div>
         </div>
       </Card>
@@ -269,17 +269,7 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
 
       <div className="relative w-full max-w-sm mx-4">
         {/* Logo mark */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center">
-              <Layers size={18} className="text-zinc-900" />
-            </div>
-            <span className="text-white text-xl font-bold tracking-tight">freeela</span>
-          </div>
-          <p className="text-zinc-400 text-sm">
-            {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta gratuitamente'}
-          </p>
-        </div>
+        <img src="/logo.png" alt="Freeela" className="w-7 h-7" />
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-elevated">
           {!isConfigured && (
@@ -287,7 +277,7 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
               <p className="font-semibold mb-2">Supabase não configurado</p>
               <p className="mb-2 text-amber-400/80">Crie um arquivo <code className="bg-amber-900/40 px-1 rounded font-mono">.env</code> na pasta <code className="bg-amber-900/40 px-1 rounded font-mono">app/</code> com:</p>
               <pre className="bg-amber-950/60 p-2 rounded text-[10px] overflow-x-auto font-mono text-amber-300">
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=sua-anon-key
+                VITE_SUPABASE_URL=https://seu-projeto.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=sua-anon-key
               </pre>
             </div>
           )}
@@ -638,7 +628,7 @@ export default function App() {
     const projectTitle = data.title || data.demand || 'Projeto';
     const projectValue = data.value || data.estimated_value || 0;
 
-    switch(type) {
+    switch (type) {
       case 'contract':
         title = `Contrato Prestação de Serviço: ${clientName}`;
         system = "Você é um advogado especialista em contratos de tecnologia para freelancers brasileiros. Redija um contrato completo com cláusulas de Escopo, Prazos, Pagamento, Propriedade Intelectual e Foro.";
@@ -919,17 +909,11 @@ export default function App() {
 
   // Se não está autenticado, mostrar tela de login
   if (!user) {
-    return <LoginModal isOpen={true} onLoginSuccess={() => {}} />;
+    return <LoginModal isOpen={true} onLoginSuccess={() => { }} />;
   }
 
   const logoText = (
-    <div className="flex items-center gap-2">
-      <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center flex-shrink-0">
-        <Layers size={14} className="text-zinc-900" />
-      </div>
-      <span className="text-white font-bold tracking-tight text-base">freeela</span>
-      <span className="text-brand-500 text-[9px] font-bold tracking-widest uppercase leading-none mt-0.5">app</span>
-    </div>
+    <img src="/logo.png" alt="Freeela" className="w-full h-10 p-1 object-contain" />
   )
 
   return (
@@ -1032,7 +1016,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ai" className="h-9 px-4 text-xs gap-1.5" onClick={() => handleGenerateDocument('proposal', { name: 'Novo Cliente', demand: 'Redação de Site', value: 2000 })} loading={aiLoading}>
-              <Sparkles size={13}/> IA
+              <Sparkles size={13} /> IA
             </Button>
             <div className="w-8 h-8 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-700 dark:text-brand-400 font-bold text-xs border border-brand-200 dark:border-brand-800">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
@@ -1150,22 +1134,22 @@ export default function App() {
         )}
       >
         <form className="space-y-4" onSubmit={handleAddLead}>
-           <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Nome do Cliente/Empresa</label>
-              <input type="text" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} required />
-           </div>
-           <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">E-mail de Contato</label>
-              <input type="email" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} required />
-           </div>
-           <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Demanda Inicial</label>
-              <textarea className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all h-24 resize-none" placeholder="Descreva brevemente o que o cliente precisa..." value={newLead.demand} onChange={e => setNewLead({...newLead, demand: e.target.value})} required></textarea>
-           </div>
-           <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Budget Estimado (R$)</label>
-              <input type="number" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} />
-           </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Nome do Cliente/Empresa</label>
+            <input type="text" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} required />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">E-mail de Contato</label>
+            <input type="email" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({ ...newLead, email: e.target.value })} required />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Demanda Inicial</label>
+            <textarea className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all h-24 resize-none" placeholder="Descreva brevemente o que o cliente precisa..." value={newLead.demand} onChange={e => setNewLead({ ...newLead, demand: e.target.value })} required></textarea>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Budget Estimado (R$)</label>
+            <input type="number" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({ ...newLead, value: e.target.value })} />
+          </div>
         </form>
       </Modal>
 

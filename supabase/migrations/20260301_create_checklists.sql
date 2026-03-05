@@ -1,5 +1,5 @@
 -- ============================================
--- Migration: Checklists + Checklist Items + status "waiting" no Kanban
+-- Migration: Checklists + status "waiting" no Kanban
 -- ============================================
 
 -- 1. Adicionar valor 'waiting' ao enum task_status (para o Kanban existente)
@@ -31,13 +31,15 @@ CREATE TABLE IF NOT EXISTS checklist_items (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Índices
+
+-- 3. Índices para consultas frequentes
 CREATE INDEX IF NOT EXISTS idx_checklists_user    ON checklists(user_id);
 CREATE INDEX IF NOT EXISTS idx_checklists_project ON checklists(project_id);
 CREATE INDEX IF NOT EXISTS idx_checklists_status  ON checklists(status);
 CREATE INDEX IF NOT EXISTS idx_checklist_items_checklist ON checklist_items(checklist_id);
 
--- 5. RLS — checklists
+
+-- 4. RLS (Row Level Security)
 ALTER TABLE checklists ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own checklists"
@@ -56,7 +58,6 @@ CREATE POLICY "Users can delete own checklists"
   ON checklists FOR DELETE
   USING (user_id IN (SELECT id FROM users WHERE auth_user_id = auth.uid()));
 
--- 6. RLS — checklist_items (via checklist ownership)
 ALTER TABLE checklist_items ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own checklist items"
