@@ -4,7 +4,12 @@
       "Bash(npm run dev:*)",
       "Bash(ls:*)",
       "Bash(node check-setup.js:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(xargs grep -l \"AI\\\\|ai\\\\|artificial\\\\|gemini\\\\|Sparkles\")",
+      "Bash(grep -n \"handleGenerateDocument\\\\|onGenerateDocument\\\\|aiLoading\\\\|AIModal\\\\|variant=\"\"ai\"\"\\\\|generated_by_ai\\\\|ai_model\\\\|ai_prompt\" /d/Workspace/GitHub/Freeela/app/src/views/*.jsx)",
+      "Bash(powershell -Command \"\\(Get-Content PropostasView.jsx\\) -replace ''dark:bg-slate-700 dark:text-zinc-300'', ''text-zinc-300'' | Set-Content PropostasView.jsx\")",
+      "Bash(powershell -Command \"\\(Get-Content FileUploader.jsx\\) -replace ''text-slate-400 flex-shrink-0'', ''text-zinc-500 flex-shrink-0'' -replace ''border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'', ''border-zinc-700/60 hover:border-brand-500/50 hover:bg-zinc-800/50'' -replace ''text-slate-500 font-medium'', ''text-zinc-500 font-medium'' -replace ''bg-slate-100 dark:bg-slate-700'', ''bg-zinc-800'' -replace ''text-slate-300 dark:text-slate-600'', ''text-zinc-700'' -replace ''text-slate-500 dark:text-slate-400 font-medium'', ''text-zinc-500 font-medium'' -replace ''text-slate-400'', ''text-zinc-500'' -replace ''bg-slate-50 dark:bg-slate-800/50'', ''bg-zinc-800/40'' -replace ''border-slate-100 dark:border-slate-700'', ''border-zinc-800/60'' -replace ''text-slate-800 dark:text-slate-200'', ''text-zinc-200'' -replace ''hover:bg-slate-200 dark:hover:bg-slate-700'', ''hover:bg-zinc-700'' -replace ''text-slate-500'', ''text-zinc-500'' | Set-Content FileUploader.jsx\")",
+      "Bash(powershell -Command \"\\(Get-Content PropostasView.jsx\\) -replace ''text-slate-200 dark:text-slate-700'', ''text-zinc-700'' -replace ''text-slate-700 dark:text-slate-200'', ''text-zinc-200'' -replace ''text-slate-700 dark:text-zinc-300'', ''text-zinc-300'' | Set-Content PropostasView.jsx\")"
     ]
   }
 }

@@ -79,9 +79,9 @@ export default function LeadsView({ allLeads, filter, onFilterChange, onAddLead,
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-card overflow-hidden">
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800/60 shadow-card overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-100 dark:border-zinc-800">
+          <thead className="bg-zinc-800/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800/60">
             <tr>
               <th className="px-6 py-3.5">Lead / Empresa</th>
               <th className="px-6 py-3.5">Demanda</th>

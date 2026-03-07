@@ -492,9 +492,6 @@ export interface Document {
   file_path?: string | null
   file_size?: number | null
   mime_type?: string | null
-  generated_by_ai: boolean
-  ai_model?: string | null
-  ai_prompt?: string | null
   version: number
   parent_document_id?: string | null
   is_draft: boolean
@@ -520,9 +517,6 @@ export interface DocumentInsert {
   file_path?: string | null
   file_size?: number | null
   mime_type?: string | null
-  generated_by_ai?: boolean
-  ai_model?: string | null
-  ai_prompt?: string | null
   version?: number
   parent_document_id?: string | null
   is_draft?: boolean

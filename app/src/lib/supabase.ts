@@ -354,18 +354,6 @@ export async function markPaymentAsPaid(paymentId: string) {
 }
 
 // ============================================
-// DOCUMENTOS (gerados por IA)
-// ============================================
-
-export async function saveDocument(userId: string, documentData: any) {
-  return supabase
-    .from('documents')
-    .insert({ user_id: userId, ...documentData })
-    .select()
-    .single()
-}
-
-// ============================================
 // PROPOSTAS COMERCIAIS
 // ============================================
 

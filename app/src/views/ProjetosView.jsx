@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Briefcase, X, Users, CreditCard, FolderOpen, Sparkles,
+  Briefcase, X, Users, CreditCard, FolderOpen,
   CheckCircle2, ChevronDown, ChevronRight, Calendar, ShieldCheck,
   DollarSign, Archive, ArrowRight, Plus, Trash2, Pencil,
   ChevronUp, Minus, ArrowDown, Check, Square, CheckSquare,
@@ -43,7 +43,7 @@ const Badge = ({ color = 'slate', children }) => {
 };
 
 const Card = ({ children, className = '' }) => (
-  <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-card ${className}`}>
+  <div className={`bg-zinc-900 rounded-2xl border border-zinc-800/60 shadow-card ${className}`}>
     {children}
   </div>
 );
@@ -51,11 +51,11 @@ const Card = ({ children, className = '' }) => (
 const Button = ({ children, onClick, variant = 'primary', className = '', icon: Icon, loading = false, disabled = false }) => {
   const variants = {
     primary:   'bg-brand-500 text-zinc-900 hover:bg-brand-400 font-semibold shadow-sm',
-    secondary: 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700',
-    outline:   'border border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800',
-    danger:    'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900',
+    secondary: 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700/50',
+    outline:   'border border-zinc-700 text-zinc-300 hover:bg-zinc-800',
+    danger:    'bg-red-950/30 text-red-400 hover:bg-red-950/50 border border-red-900/50',
     ai:        'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-md font-semibold',
-    ghost:     'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300',
+    ghost:     'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300',
   };
   return (
     <button onClick={onClick} disabled={disabled || loading}
@@ -213,7 +213,7 @@ function InlineAdd({ onAdd, placeholder = 'Nome do checklist...' }) {
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => e.key === 'Escape' && setOpen(false)}
         placeholder={placeholder}
-        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+        className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all"
       />
       <div className="flex gap-2">
         <button type="submit" className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-zinc-900 hover:bg-brand-400 transition-all">Adicionar</button>
@@ -227,7 +227,7 @@ function InlineAdd({ onAdd, placeholder = 'Nome do checklist...' }) {
 export default function ProjetosView({
   projects, filter, onFilterChange, selectedProject, onSelectProject,
   onDeclineProject, onArchiveProject, onAdvanceWorkflow, onUpdateTask,
-  onGenerateDocument, aiLoading, createProjectFolders,
+  createProjectFolders,
   // Checklist props
   onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
   onAddChecklistItem, onToggleChecklistItem, onDeleteChecklistItem,
@@ -311,8 +311,7 @@ export default function ProjetosView({
                 <Button variant="outline" icon={FolderOpen} className="h-9 text-xs px-3" onClick={() => createProjectFolders && createProjectFolders(proj)} disabled={proj.folders_created}>
                   {proj.folders_created ? 'Pastas OK' : 'Criar Pastas'}
                 </Button>
-                <Button variant="ai" icon={Sparkles} className="h-9 text-xs px-3" onClick={() => onGenerateDocument('proposal', proj)} loading={aiLoading}>Gerar Proposta</Button>
-                <Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
+<Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
                   {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
                 </Button>
               </>
@@ -354,7 +353,7 @@ export default function ProjetosView({
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
                         ${isActive ? 'bg-brand-500 text-zinc-900 shadow-brand scale-110 ring-4 ring-brand-100 dark:ring-brand-900/30' :
                           isDone   ? 'bg-emerald-500 text-white' :
-                                     'bg-white dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-700 text-zinc-300 dark:text-zinc-600'}`}>
+                                     'bg-zinc-800 border-2 border-zinc-700 text-zinc-600'}`}>
                         {isDone ? <CheckCircle2 size={16} /> : s.icon}
                       </div>
                       <p className={`text-[9px] font-bold uppercase tracking-wider text-center leading-tight
@@ -397,34 +396,6 @@ export default function ProjetosView({
                 </div>
               </Card>
 
-              {/* AI Docs */}
-              <Card className="p-6">
-                <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 mb-5">Documentos com IA</h3>
-                <div className="space-y-3">
-                  <button onClick={() => onGenerateDocument('briefing', proj)}
-                    className="w-full p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-all text-left group flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                      <Calendar className="text-violet-500" size={18} />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm text-zinc-800 dark:text-zinc-200">Briefing Tecnico</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Gere perguntas de alinhamento</p>
-                    </div>
-                    <ArrowRight className="ml-auto text-zinc-300 group-hover:text-violet-400 transition-colors" size={15} />
-                  </button>
-                  <button onClick={() => onGenerateDocument('contract', proj)}
-                    className="w-full p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                      <ShieldCheck className="text-blue-500" size={18} />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm text-zinc-800 dark:text-zinc-200">Contrato Juridico</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Rascunho com clausulas BR</p>
-                    </div>
-                    <ArrowRight className="ml-auto text-zinc-300 group-hover:text-blue-400 transition-colors" size={15} />
-                  </button>
-                </div>
-              </Card>
             </div>
           </div>
         )}
@@ -448,7 +419,7 @@ export default function ProjetosView({
                       {colTasks.length}
                     </span>
                   </div>
-                  <div className="flex-1 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-3 space-y-2 min-h-[200px]">
+                  <div className="flex-1 bg-zinc-800/30 rounded-2xl p-3 space-y-2 min-h-[200px]">
                     {colTasks.map(item => {
                       if (item._type === 'checklist') {
                         return (
@@ -528,7 +499,7 @@ export default function ProjetosView({
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 text-[10px] font-bold uppercase tracking-widest">
+                  <thead className="bg-zinc-800/40 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
                     <tr>
                       <th className="px-6 py-3.5">Data</th>
                       <th className="px-6 py-3.5">Descricao</th>
@@ -541,7 +512,7 @@ export default function ProjetosView({
                       <tr><td colSpan="4" className="px-6 py-12 text-center text-zinc-400 text-sm">Nenhum pagamento registrado.</td></tr>
                     ) : (
                       payments.map(pay => (
-                        <tr key={pay.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <tr key={pay.id} className="hover:bg-zinc-800/30 transition-colors">
                           <td className="px-6 py-4 font-mono text-sm text-zinc-500">{pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}</td>
                           <td className="px-6 py-4 font-medium text-zinc-700 dark:text-zinc-300">{pay.description}</td>
                           <td className="px-6 py-4 font-semibold font-mono text-zinc-900 dark:text-zinc-100">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
@@ -613,7 +584,7 @@ export default function ProjetosView({
 
             return (
               <div key={p.id}
-                className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-card p-6 hover:shadow-elevated hover:border-zinc-200 dark:hover:border-zinc-700 transition-all cursor-pointer group"
+                className="bg-zinc-900 rounded-2xl border border-zinc-800/60 shadow-card p-6 hover:shadow-elevated hover:border-zinc-700 transition-all cursor-pointer group"
                 onClick={() => handleOpenProject(p)}>
 
                 {/* Header */}

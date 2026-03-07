@@ -14,7 +14,7 @@ const STATUS_CONFIG = {
 
 const PRIORITY_CONFIG = {
   alta:   { label: 'Alta',   color: 'text-red-600 dark:text-red-400',    icon: ChevronUp,   bg: 'bg-red-50 dark:bg-red-950/20' },
-  normal: { label: 'Normal', color: 'text-zinc-500 dark:text-zinc-400',  icon: Minus,        bg: 'bg-zinc-50 dark:bg-zinc-800/50' },
+  normal: { label: 'Normal', color: 'text-zinc-400',  icon: Minus,        bg: 'bg-zinc-800/50' },
   baixa:  { label: 'Baixa',  color: 'text-blue-500 dark:text-blue-400',  icon: ArrowDown,    bg: 'bg-blue-50 dark:bg-blue-950/20' },
 };
 
@@ -130,7 +130,7 @@ export default function PainelView({
           <button
             key={card.key}
             onClick={() => setFilterStatus(card.key)}
-            className={`bg-white dark:bg-zinc-900 rounded-2xl border p-4 transition-all text-left
+            className={`bg-zinc-900 rounded-2xl border p-4 transition-all text-left
               ${filterStatus === card.key
                 ? 'border-brand-300 dark:border-brand-700 shadow-brand'
                 : 'border-zinc-100 dark:border-zinc-800 shadow-card hover:shadow-elevated'
@@ -152,7 +152,7 @@ export default function PainelView({
           <input
             type="text"
             placeholder="Buscar por projeto, cliente ou checklist..."
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2.5 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+            className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl py-2.5 pl-9 pr-4 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -160,7 +160,7 @@ export default function PainelView({
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value)}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+          className="bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all"
         >
           <option value="all">Todas prioridades</option>
           <option value="alta">Alta</option>
@@ -170,10 +170,10 @@ export default function PainelView({
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-card overflow-hidden">
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800/60 shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+            <thead className="bg-zinc-800/40">
               <tr>
                 <th className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Projeto</th>
                 <th className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Checklist</th>
@@ -206,7 +206,7 @@ export default function PainelView({
                   const pr = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.normal;
                   const PrIcon = pr.icon;
                   return (
-                    <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                    <tr key={item.id} className="hover:bg-zinc-800/30 transition-colors">
                       {/* Projeto */}
                       <td className="px-6 py-4">
                         <p className="font-medium text-zinc-800 dark:text-zinc-200 text-sm">{item.project?.title || '—'}</p>
@@ -260,7 +260,7 @@ export default function PainelView({
       {/* Modal novo checklist */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-elevated animate-in zoom-in-95 overflow-hidden">
+          <div className="bg-zinc-900 w-full max-w-lg rounded-2xl border border-zinc-800/60 shadow-elevated animate-in zoom-in-95 overflow-hidden">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Novo Checklist</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
@@ -348,7 +348,7 @@ export default function PainelView({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium border border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-all"
+                  className="px-4 py-2 rounded-xl text-sm font-medium border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-all"
                 >
                   Cancelar
                 </button>

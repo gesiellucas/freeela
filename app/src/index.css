@@ -3,11 +3,17 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
   body {
     margin: 0;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: #09090b;
+    color: #f4f4f5;
   }
 
   /* Custom scrollbar — thin and refined */
@@ -19,17 +25,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #d4d4d8;
+    background: #27272a;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #a1a1aa;
-  }
-  .dark ::-webkit-scrollbar-thumb {
     background: #3f3f46;
-  }
-  .dark ::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
   }
 }
 
@@ -38,10 +38,10 @@
     font-family: 'JetBrains Mono', Consolas, monospace;
   }
 
-  /* Sidebar always dark — not dependent on dark mode class */
+  /* Sidebar always dark */
   .sidebar-dark {
-    background-color: #0f0f11;
-    border-color: #1e1e24;
+    background-color: #0a0a0c;
+    border-color: #18181b;
   }
 
   .animate-in {
@@ -58,6 +58,19 @@
     animation-name: zoom-in-95;
     animation-duration: 200ms;
     animation-timing-function: ease-out;
+  }
+
+  /* Subtle grid texture for dark backgrounds */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Glow effect for brand elements */
+  .glow-brand {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.15), 0 0 40px rgba(245, 158, 11, 0.05);
   }
 }
 

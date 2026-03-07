@@ -18,7 +18,6 @@ import {
   MoreVertical,
   Trash2,
   AlertCircle,
-  Sparkles,
   Loader2,
   X,
   Send,
@@ -55,8 +54,7 @@ import {
   updateTaskStatus as updateTaskStatusAPI,
   advanceProjectWorkflow,
   createPayment,
-  saveDocument,
-  declineProposal,
+declineProposal,
   declineProject as declineProjectAPI,
   archiveProject as archiveProjectAPI,
   getProposals,
@@ -125,7 +123,7 @@ const getStepNumber = (stepKey) => {
 // --- Componentes Reutilizáveis ---
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-card ${className}`}>
+  <div className={`bg-zinc-900 rounded-2xl border border-zinc-800/60 shadow-card ${className}`}>
     {children}
   </div>
 );
@@ -133,11 +131,10 @@ const Card = ({ children, className = "" }) => (
 const Button = ({ children, onClick, variant = "primary", className = "", icon: Icon, loading = false, disabled = false }) => {
   const variants = {
     primary: "bg-brand-500 text-zinc-900 hover:bg-brand-400 font-semibold shadow-sm",
-    secondary: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700",
-    outline: "border border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900",
-    ai: "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-md font-semibold",
-    ghost: "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+    secondary: "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700/50",
+    outline: "border border-zinc-700 text-zinc-300 hover:bg-zinc-800",
+    danger: "bg-red-950/30 text-red-400 hover:bg-red-950/50 border border-red-900/50",
+    ghost: "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
   };
 
   return (
@@ -154,12 +151,12 @@ const Button = ({ children, onClick, variant = "primary", className = "", icon: 
 
 const Badge = ({ children, color = "blue" }) => {
   const colors = {
-    blue: "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900",
-    green: "bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900",
-    yellow: "bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900",
-    purple: "bg-violet-50 text-violet-700 border border-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900",
-    slate: "bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
-    red: "bg-red-50 text-red-600 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900"
+    blue: "bg-blue-950/30 text-blue-400 border border-blue-900/50",
+    green: "bg-emerald-950/30 text-emerald-400 border border-emerald-900/50",
+    yellow: "bg-amber-950/30 text-amber-400 border border-amber-900/50",
+    purple: "bg-violet-950/30 text-violet-400 border border-violet-900/50",
+    slate: "bg-zinc-800 text-zinc-400 border border-zinc-700",
+    red: "bg-red-950/30 text-red-400 border border-red-900/50"
   };
   return (
     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${colors[color]}`}>
@@ -173,48 +170,20 @@ const Badge = ({ children, color = "blue" }) => {
 const Modal = ({ isOpen, onClose, title, children, footer }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <Card className="w-full max-w-lg overflow-hidden shadow-elevated animate-in zoom-in-95">
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">{title}</h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X size={18} /></button>
+        <div className="px-6 py-4 border-b border-zinc-800/60 flex justify-between items-center">
+          <h3 className="font-semibold text-zinc-100 tracking-tight">{title}</h3>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-800 transition-colors"><X size={18} /></button>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {children}
         </div>
         {footer && (
-          <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3 bg-zinc-50 dark:bg-zinc-900/50">
+          <div className="px-6 py-4 border-t border-zinc-800/60 flex justify-end gap-3 bg-zinc-900/50">
             {footer}
           </div>
         )}
-      </Card>
-    </div>
-  );
-};
-
-const AIModal = ({ isOpen, onClose, title, content, onApply, type }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-elevated border-violet-200/50 dark:border-violet-900/30">
-        <div className="px-6 py-4 border-b border-violet-100 dark:border-violet-900/30 flex justify-between items-center bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/20">
-          <h3 className="font-semibold flex items-center gap-2.5 text-violet-700 dark:text-violet-300 tracking-tight">
-            <Sparkles size={18} className="text-violet-500" /> {title}
-          </h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-white/60 dark:hover:bg-zinc-800 transition-colors"><X size={18} /></button>
-        </div>
-        <div className="p-8 overflow-y-auto flex-1">
-          <div className="max-w-none text-sm leading-relaxed whitespace-pre-wrap font-mono text-zinc-700 dark:text-zinc-300">
-            {content}
-          </div>
-        </div>
-        <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/60">
-          <p className="text-xs text-zinc-400 font-medium">Gemini 2.5 Flash · Rascunho para revisão</p>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose}>Descartar</Button>
-            {onApply && <Button variant="ai" onClick={onApply}><Sparkles size={14} /> Utilizar este Conteúdo</Button>}
-          </div>
-        </div>
       </Card>
     </div>
   );
@@ -379,8 +348,6 @@ export default function App() {
   const [leadToDecline, setLeadToDecline] = useState(null);
   const [isDeclineProjectModalOpen, setIsDeclineProjectModalOpen] = useState(false);
   const [projectToDecline, setProjectToDecline] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiModal, setAiModal] = useState({ open: false, title: '', content: '', type: '', onApply: null });
   const [dataLoading, setDataLoading] = useState(false);
 
   // Form States
@@ -589,91 +556,6 @@ export default function App() {
       }
     } catch (err) {
       console.error('Erro ao deletar item:', err);
-    }
-  };
-
-  // --- Gemini API ---
-
-  const callGemini = async (prompt, systemInstruction) => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      systemInstruction: { parts: [{ text: systemInstruction }] }
-    };
-
-    for (let i = 0; i < 5; i++) {
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) throw new Error('API request failed');
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text;
-      } catch (e) {
-        if (i === 4) throw e;
-        await new Promise(res => setTimeout(res, Math.pow(2, i) * 1000));
-      }
-    }
-  };
-
-  const handleGenerateDocument = async (type, data) => {
-    setAiLoading(true);
-    let system = "";
-    let prompt = "";
-    let title = "";
-
-    const clientName = data.client?.name || data.name || 'Cliente';
-    const projectTitle = data.title || data.demand || 'Projeto';
-    const projectValue = data.value || data.estimated_value || 0;
-
-    switch (type) {
-      case 'contract':
-        title = `Contrato Prestação de Serviço: ${clientName}`;
-        system = "Você é um advogado especialista em contratos de tecnologia para freelancers brasileiros. Redija um contrato completo com cláusulas de Escopo, Prazos, Pagamento, Propriedade Intelectual e Foro.";
-        prompt = `Contratante: ${clientName}\nServiço: ${projectTitle}\nValor: R$ ${projectValue}\nAno: 2024`;
-        break;
-      case 'proposal':
-        title = `Proposta Comercial: ${clientName}`;
-        system = "Você é um consultor de vendas sênior. Crie uma proposta comercial irresistível, estruturada em: O Problema, Nossa Solução, Cronograma de Entrega, Investimento e Próximos Passos.";
-        prompt = `Cliente: ${clientName}\nProjeto: ${projectTitle}\nBudget Estimado: R$ ${projectValue}`;
-        break;
-      case 'briefing':
-        title = `Briefing Estratégico: ${clientName}`;
-        system = "Você é um Product Designer. Gere um documento de briefing com perguntas específicas para o tipo de projeto solicitado e sugestões de referências visuais.";
-        prompt = `Demanda: ${projectTitle}`;
-        break;
-    }
-
-    try {
-      const result = await callGemini(prompt, system);
-
-      // Preparar função para salvar o documento
-      const onApply = async () => {
-        if (userId && data.id) {
-          await saveDocument(userId, {
-            project_id: data.id,
-            title: title,
-            document_type: type,
-            content: result,
-            generated_by_ai: true,
-            ai_model: 'gemini-2.5-flash',
-            ai_prompt: prompt,
-          });
-        }
-        alert(`Documento (${type}) salvo com sucesso!`);
-        setAiModal({ ...aiModal, open: false });
-      };
-
-      setAiModal({ open: true, title, content: result, type, onApply });
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao gerar documento com IA');
-    } finally {
-      setAiLoading(false);
     }
   };
 
@@ -919,12 +801,12 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans">
 
       {/* Sidebar — always dark */}
-      <aside className="fixed left-0 top-0 h-full w-60 bg-[#0f0f11] border-r border-[#1e1e24] z-20 hidden lg:flex flex-col">
+      <aside className="fixed left-0 top-0 h-full w-60 bg-[#0a0a0c] border-r border-[#18181b] z-20 hidden lg:flex flex-col">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-[#1e1e24]">
+        <div className="px-5 py-5 border-b border-[#18181b]">
           {logoText}
         </div>
 
@@ -942,8 +824,8 @@ export default function App() {
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                 ${activeTab === item.id
-                  ? 'bg-brand-500 text-zinc-900 font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
+                  ? 'bg-brand-500 text-zinc-900 font-semibold shadow-glow'
+                  : 'text-zinc-500 hover:text-zinc-100 hover:bg-white/5'
                 }`}
             >
               <item.icon size={16} />
@@ -985,19 +867,19 @@ export default function App() {
           </div>
         </nav>
 
-        <div className="p-3 border-t border-[#1e1e24] space-y-2">
-          <div className="rounded-xl bg-white/5 border border-white/8 p-3">
+        <div className="p-3 border-t border-[#18181b] space-y-2">
+          <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${rootDirectory ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-500">Drive Local</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${rootDirectory ? 'bg-emerald-400' : 'bg-zinc-700'}`}></div>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Drive Local</span>
             </div>
-            <p className="text-[11px] text-zinc-600 leading-relaxed mb-2.5">Vincule sua pasta para automação de diretórios.</p>
-            <button onClick={handleSelectRoot} className="w-full text-[11px] font-medium text-zinc-300 bg-white/8 hover:bg-white/12 rounded-lg py-1.5 transition-colors border border-white/6">
+            <p className="text-[11px] text-zinc-700 leading-relaxed mb-2.5">Vincule sua pasta para automação de diretórios.</p>
+            <button onClick={handleSelectRoot} className="w-full text-[11px] font-medium text-zinc-400 bg-white/[0.06] hover:bg-white/10 rounded-lg py-1.5 transition-colors border border-white/[0.05]">
               {rootDirectory ? "Pasta Vinculada ✓" : "Vincular pasta"}
             </button>
           </div>
 
-          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-sm font-medium">
+          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-all text-sm font-medium">
             <LogOut size={15} />
             <span>Sair</span>
           </button>
@@ -1006,22 +888,19 @@ export default function App() {
 
       {/* Main Content */}
       <main className="lg:ml-60 min-h-screen">
-        <header className="sticky top-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800/60 px-8 py-3.5 flex items-center justify-between z-10">
+        <header className="sticky top-0 bg-[#09090b]/90 backdrop-blur-md border-b border-zinc-800/50 px-8 py-3.5 flex items-center justify-between z-10">
           <div className="relative w-80 max-w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
             <input
               type="text"
               placeholder="Pesquisar projetos, clientes..."
-              className="w-full bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl py-2 pl-9 pr-4 text-sm text-zinc-700 dark:text-zinc-300 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2 pl-9 pr-4 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-700 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ai" className="h-9 px-4 text-xs gap-1.5" onClick={() => handleGenerateDocument('proposal', { name: 'Novo Cliente', demand: 'Redação de Site', value: 2000 })} loading={aiLoading}>
-              <Sparkles size={13} /> IA
-            </Button>
-            <div className="w-8 h-8 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-700 dark:text-brand-400 font-bold text-xs border border-brand-200 dark:border-brand-800">
+            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-brand-500 font-bold text-xs">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </div>
           </div>
@@ -1030,7 +909,7 @@ export default function App() {
         <div className="p-8 max-w-7xl mx-auto">
           {dataLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="animate-spin text-blue-600" size={32} />
+              <Loader2 className="animate-spin text-brand-500" size={32} />
             </div>
           ) : (
             <>
@@ -1068,8 +947,6 @@ export default function App() {
                   onArchiveProject={handleArchiveProject}
                   onAdvanceWorkflow={handleAdvanceWorkflow}
                   onUpdateTask={updateTaskStatus}
-                  onGenerateDocument={handleGenerateDocument}
-                  aiLoading={aiLoading}
                   createProjectFolders={createProjectFolders}
                   onCreateChecklist={handleCreateChecklist}
                   onUpdateChecklist={handleUpdateChecklist}
@@ -1142,11 +1019,11 @@ export default function App() {
         <form className="space-y-4" onSubmit={handleAddLead}>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Nome do Cliente/Empresa</label>
-            <input type="text" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} required />
+            <input type="text" className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} required />
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">E-mail de Contato</label>
-            <input type="email" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({ ...newLead, email: e.target.value })} required />
+            <input type="email" className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({ ...newLead, email: e.target.value })} required />
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Demanda Inicial</label>
@@ -1154,7 +1031,7 @@ export default function App() {
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-2">Budget Estimado (R$)</label>
-            <input type="number" className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({ ...newLead, value: e.target.value })} />
+            <input type="number" className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({ ...newLead, value: e.target.value })} />
           </div>
         </form>
       </Modal>
@@ -1179,12 +1056,12 @@ export default function App() {
         )}
       >
         <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 dark:bg-amber-950/20 dark:border-amber-800/40">
+          <div className="bg-amber-950/20 border border-amber-800/40 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+              <AlertCircle className="text-amber-400 flex-shrink-0 mt-0.5" size={18} />
               <div>
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Esta ação arquivará o lead</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                <p className="text-sm font-semibold text-amber-300">Esta ação arquivará o lead</p>
+                <p className="text-xs text-amber-500 mt-1">
                   O lead <strong>{leadToDecline?.name}</strong> será marcado como "perdido" e arquivado.
                 </p>
               </div>
@@ -1196,7 +1073,7 @@ export default function App() {
               Motivo do declínio (opcional)
             </label>
             <textarea
-              className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all h-24 resize-none"
+              className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all h-24 resize-none"
               placeholder="Ex: Orçamento acima do esperado, prazo incompatível, cliente não respondeu..."
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
@@ -1229,12 +1106,12 @@ export default function App() {
         )}
       >
         <div className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 dark:bg-red-950/20 dark:border-red-800/40">
+          <div className="bg-red-950/20 border border-red-900/40 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
+              <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={18} />
               <div>
-                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Esta ação encerrará o projeto</p>
-                <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                <p className="text-sm font-semibold text-red-300">Esta ação encerrará o projeto</p>
+                <p className="text-xs text-red-500 mt-1">
                   O projeto <strong>{projectToDecline?.title}</strong> será marcado como inativo e removido da lista de projetos ativos.
                 </p>
               </div>
@@ -1246,7 +1123,7 @@ export default function App() {
               Motivo do declínio (opcional)
             </label>
             <textarea
-              className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all h-24 resize-none"
+              className="w-full bg-zinc-800/60 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-zinc-600 transition-all h-24 resize-none"
               placeholder="Ex: Cliente cancelou, proposta não aprovada, projeto inviável..."
               value={declineProjectReason}
               onChange={(e) => setDeclineProjectReason(e.target.value)}
@@ -1255,14 +1132,6 @@ export default function App() {
         </div>
       </Modal>
 
-      <AIModal
-        isOpen={aiModal.open}
-        onClose={() => setAiModal({ ...aiModal, open: false })}
-        title={aiModal.title}
-        content={aiModal.content}
-        type={aiModal.type}
-        onApply={aiModal.onApply}
-      />
     </div>
   );
 }
