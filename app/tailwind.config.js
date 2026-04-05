@@ -26,10 +26,10 @@ export default {
         },
       },
       boxShadow: {
-        'brand':    '0 0 0 3px rgba(245, 158, 11, 0.15)',
-        'card':     '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
-        'elevated': '0 4px 24px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.3)',
-        'glow':     '0 0 30px rgba(245, 158, 11, 0.12)',
+        'brand':    '0 0 0 3px rgba(245, 158, 11, 0.20)',
+        'card':     '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)',
+        'elevated': '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+        'glow':     '0 0 30px rgba(245, 158, 11, 0.18)',
       },
       keyframes: {
         'fade-up': {

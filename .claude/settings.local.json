@@ -12,7 +12,9 @@
       "Bash(powershell -Command \"\\(Get-Content PropostasView.jsx\\) -replace ''text-slate-200 dark:text-slate-700'', ''text-zinc-700'' -replace ''text-slate-700 dark:text-slate-200'', ''text-zinc-200'' -replace ''text-slate-700 dark:text-zinc-300'', ''text-zinc-300'' | Set-Content PropostasView.jsx\")",
       "WebFetch(domain:hub.docker.com)",
       "WebFetch(domain:garagehq.deuxfleurs.fr)",
-      "Bash(xxd \"d:/Workspace/GitHub/Freeela/supabase/supabase-project/volumes/garage/init.sh\")"
+      "Bash(xxd \"d:/Workspace/GitHub/Freeela/supabase/supabase-project/volumes/garage/init.sh\")",
+      "Bash(grep -E \"\\\\.\\(json|config|ts|js\\)$\")",
+      "Bash(powershell -Command ':*)"
     ]
   }
 }

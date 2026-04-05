@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import {
   UploadCloud, FileText, Video, Music, Image, File,
   ExternalLink, Trash2, Loader2
@@ -6,14 +6,14 @@ import {
 import { uploadFile, createMediaFile, deleteMediaFile, deleteStorageFile } from '../../lib/supabase';
 
 const FileTypeIcon = ({ mimeType }) => {
-  if (!mimeType) return <File size={18} className="text-zinc-500 flex-shrink-0" />;
+  if (!mimeType) return <File size={18} className="text-slate-400 flex-shrink-0" />;
   if (mimeType.includes('pdf'))   return <FileText size={18} className="text-red-400 flex-shrink-0" />;
   if (mimeType.includes('video')) return <Video size={18} className="text-purple-400 flex-shrink-0" />;
   if (mimeType.includes('audio')) return <Music size={18} className="text-green-400 flex-shrink-0" />;
   if (mimeType.includes('image')) return <Image size={18} className="text-blue-400 flex-shrink-0" />;
   if (mimeType.includes('word') || mimeType.includes('document')) return <FileText size={18} className="text-blue-600 flex-shrink-0" />;
   if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return <FileText size={18} className="text-orange-400 flex-shrink-0" />;
-  return <File size={18} className="text-zinc-500 flex-shrink-0" />;
+  return <File size={18} className="text-slate-400 flex-shrink-0" />;
 };
 
 const formatFileSize = (bytes) => {
@@ -122,7 +122,7 @@ export default function FileUploader({
           ${compact ? 'p-4' : 'p-6'}
           ${isDragging
             ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-zinc-700/60 hover:border-brand-500/50 hover:bg-zinc-800/50'
+            : 'border-slate-300/60 hover:border-brand-500/50 hover:bg-slate-100/50'
           }
           ${uploading ? 'pointer-events-none opacity-70' : ''}
         `}
@@ -130,8 +130,8 @@ export default function FileUploader({
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="animate-spin text-blue-500" size={compact ? 20 : 28} />
-            <p className="text-xs text-zinc-500 font-medium">Enviando...</p>
-            <div className="w-full max-w-xs bg-zinc-800 rounded-full h-1.5">
+            <p className="text-xs text-slate-400 font-medium">Enviando...</p>
+            <div className="w-full max-w-xs bg-slate-100 rounded-full h-1.5">
               <div
                 className="bg-blue-600 h-full rounded-full transition-all duration-500"
                 style={{ width: `${uploadPercent}%` }}
@@ -140,13 +140,13 @@ export default function FileUploader({
           </div>
         ) : (
           <div className={`flex flex-col items-center gap-${compact ? '1' : '2'} text-center`}>
-            <UploadCloud className="text-zinc-700" size={compact ? 22 : 32} />
-            <p className={`${compact ? 'text-xs' : 'text-sm'} text-zinc-500 font-medium`}>
+            <UploadCloud className="text-slate-600" size={compact ? 22 : 32} />
+            <p className={`${compact ? 'text-xs' : 'text-sm'} text-slate-400 font-medium`}>
               Arraste arquivos ou{' '}
               <span className="text-blue-600 underline">clique para selecionar</span>
             </p>
             {!compact && (
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-slate-400">
                 PDF, DOCX, imagens, vídeos, áudios — até 50 MB por arquivo
               </p>
             )}
@@ -171,15 +171,15 @@ export default function FileUploader({
           {existingFiles.map((file) => (
             <div
               key={file.id}
-              className="flex items-center gap-3 p-3 bg-zinc-800/40 rounded-xl border border-zinc-800/60 group"
+              className="flex items-center gap-3 p-3 bg-slate-100/40 rounded-xl border border-slate-200/60 group"
             >
               <FileTypeIcon mimeType={file.mime_type} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate text-zinc-200">
+                <p className="text-xs font-bold truncate text-slate-700">
                   {file.file_name}
                 </p>
                 {file.description && (
-                  <p className="text-[10px] text-zinc-500 truncate">{file.description}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{file.description}</p>
                 )}
                 {file.file_size && (
                   <p className="text-[10px] text-slate-300">{formatFileSize(file.file_size)}</p>
@@ -190,11 +190,11 @@ export default function FileUploader({
                   href={file.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 hover:bg-zinc-700 rounded-lg"
+                  className="p-1.5 hover:bg-slate-200 rounded-lg"
                   title="Abrir arquivo"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <ExternalLink size={13} className="text-zinc-500" />
+                  <ExternalLink size={13} className="text-slate-400" />
                 </a>
                 <button
                   onClick={() => handleDeleteFile(file)}
