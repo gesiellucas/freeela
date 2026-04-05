@@ -16,3 +16,18 @@
 
     header -server
 }
+
+# Garage S3 API — s3.{$PROXY_DOMAIN}
+s3.{$PROXY_DOMAIN} {
+    reverse_proxy garage:3900
+    header -server
+}
+
+# Garage Admin API — garage-admin.{$PROXY_DOMAIN} (protected)
+garage-admin.{$PROXY_DOMAIN} {
+    basic_auth {
+        {$PROXY_AUTH_USERNAME} {$PROXY_AUTH_PASSWORD}
+    }
+    reverse_proxy garage:3903
+    header -server
+}

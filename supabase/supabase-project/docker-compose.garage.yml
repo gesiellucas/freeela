@@ -1,0 +1,63 @@
+# Garage S3 backend — drop-in replacement for MinIO.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.garage.yml up -d
+#
+# Credentials reuse MINIO_ROOT_USER / MINIO_ROOT_PASSWORD from .env so the
+# rest of the stack (storage service) needs no changes.
+#
+# Requires these extra variables in .env:
+#   GARAGE_RPC_SECRET   — 64-char hex  (openssl rand -hex 32)
+#   GARAGE_ADMIN_TOKEN  — base64 token (openssl rand -base64 32)
+
+services:
+
+  garage:
+    build:
+      context: ./volumes/garage
+      dockerfile: Dockerfile
+    image: supabase-garage:local
+    container_name: supabase-garage
+    restart: unless-stopped
+    entrypoint: ["sh", "/init.sh"]
+    environment:
+      GARAGE_RPC_SECRET:   ${GARAGE_RPC_SECRET}
+      GARAGE_ADMIN_TOKEN:  ${GARAGE_ADMIN_TOKEN}
+      REGION:              ${REGION:-garage}
+      GLOBAL_S3_BUCKET:    ${GLOBAL_S3_BUCKET}
+      MINIO_ROOT_USER:     ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "3900:3900"   # S3 API  → http://localhost:3900
+      - "3903:3903"   # Admin   → http://localhost:3903
+    volumes:
+      - ./volumes/garage/init.sh:/init.sh:ro,z
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    healthcheck:
+      # Passes once the layout is applied and garage can serve RPC queries
+      test: [
+        "CMD-SHELL",
+        "/garage -c /tmp/garage.toml bucket list >/dev/null 2>&1"
+      ]
+      interval: 3s
+      timeout:  5s
+      retries:  40
+      start_period: 5s
+
+  storage:
+    depends_on:
+      garage:
+        condition: service_healthy
+    environment:
+      STORAGE_BACKEND:            s3
+      GLOBAL_S3_ENDPOINT:         http://garage:3900
+      GLOBAL_S3_PROTOCOL:         http
+      GLOBAL_S3_FORCE_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID:          ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY:      ${MINIO_ROOT_PASSWORD}
+      REGION:                     ${REGION:-garage}
+
+volumes:
+  garage-meta:
+  garage-data:

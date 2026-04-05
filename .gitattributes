@@ -1,2 +1,4 @@
 supabase/supabase-project/volumes/api/kong-entrypoint.sh text eol=lf
 supabase/supabase-project/utils/generate-keys.sh text eol=lf
+supabase/migrate.sh text eol=lf
+supabase/supabase-project/volumes/garage/init.sh text eol=lf
