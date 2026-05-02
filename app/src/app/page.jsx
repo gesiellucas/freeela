@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+"use client";
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Briefcase,
@@ -36,6 +37,7 @@ import {
   Paperclip,
   LayoutDashboard,
   Timer,
+  LayoutGrid,
 } from 'lucide-react';
 
 // Importar Supabase client e funções
@@ -80,16 +82,17 @@ declineProposal,
   createChecklistItem,
   toggleChecklistItem,
   deleteChecklistItem,
-} from './lib/supabase';
+} from '../lib/supabase';
 
-import PainelView from './views/PainelView';
-import LeadsView from './views/LeadsView';
-import ProjetosView from './views/ProjetosView';
-import AreaFiscalView from './views/AreaFiscalView';
-import FinanceiroView from './views/FinanceiroView';
-import PropostasView from './views/PropostasView';
-import ContratosView from './views/ContratosView';
-import PomodoroView from './views/PomodoroView';
+import PainelView from '../views/PainelView';
+import LeadsView from '../views/LeadsView';
+import ProjetosView from '../views/ProjetosView';
+import AreaFiscalView from '../views/AreaFiscalView';
+import FinanceiroView from '../views/FinanceiroView';
+import PropostasView from '../views/PropostasView';
+import ContratosView from '../views/ContratosView';
+import PomodoroView from '../views/PomodoroView';
+import OverviewView from '../views/OverviewView';
 
 // --- Constantes e Templates ---
 
@@ -199,8 +202,8 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
   const [error, setError] = useState('');
 
   // Verificar se as credenciais do Supabase estão configuradas
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const isConfigured = supabaseUrl && supabaseKey;
 
   const handleSubmit = async (e) => {
@@ -813,6 +816,7 @@ export default function App() {
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {[
             { id: 'painel', label: 'Painel', icon: LayoutDashboard },
+            { id: 'overview', label: 'Overview', icon: LayoutGrid },
             { id: 'leads', label: 'Leads', icon: Users },
             { id: 'projects', label: 'Projetos', icon: Briefcase },
             { id: 'fiscal', label: 'Área Fiscal', icon: Receipt },
@@ -913,6 +917,12 @@ export default function App() {
             </div>
           ) : (
             <>
+              {activeTab === 'overview' && (
+                <OverviewView
+                  projects={projects}
+                  userId={userId}
+                />
+              )}
               {activeTab === 'painel' && (
                 <PainelView
                   checklists={checklists}

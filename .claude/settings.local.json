@@ -14,7 +14,8 @@
       "WebFetch(domain:garagehq.deuxfleurs.fr)",
       "Bash(xxd \"d:/Workspace/GitHub/Freeela/supabase/supabase-project/volumes/garage/init.sh\")",
       "Bash(grep -E \"\\\\.\\(json|config|ts|js\\)$\")",
-      "Bash(powershell -Command ':*)"
+      "Bash(powershell -Command ':*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

@@ -2,52 +2,24 @@
   "name": "freeela",
   "version": "1.0.0",
   "description": "Freelance OS - Gestão de projetos freelance",
-  "main": "electron/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder",
-    "preview": "vite preview"
-  },
-  "build": {
-    "appId": "com.freeela.app",
-    "productName": "Freeela",
-    "files": [
-      "dist/**/*",
-      "electron/**/*"
-    ],
-    "directories": {
-      "output": "release"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "public/icon.ico"
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
     "lucide-react": "^0.460.0",
+    "next": "15.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "concurrently": "^9.1.0",
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.16",
-    "vite": "^6.0.3",
-    "wait-on": "^8.0.1"
+    "tailwindcss": "^3.4.16"
   }
 }

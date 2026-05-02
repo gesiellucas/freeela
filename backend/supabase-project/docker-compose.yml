@@ -638,6 +638,15 @@ services:
         "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
       ]
 
+  inbucket:
+    container_name: supabase-mail
+    image: inbucket/inbucket:3.0.3
+    restart: unless-stopped
+    ports:
+      - 9000:9000
+      - 2500:2500
+      - 1100:1100
+
 volumes:
   db-config:
   deno-cache:

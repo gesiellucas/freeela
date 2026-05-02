@@ -6,8 +6,8 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database.types'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
@@ -591,6 +591,39 @@ export async function getRecentActivities(userId: string, limit: number = 20) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit)
+}
+
+// ============================================
+// PROJECT COMMENTS
+// ============================================
+
+export async function getProjectComments(projectId: string) {
+  return supabase
+    .from('project_comments')
+    .select('*, user:users(full_name, avatar_url)')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+}
+
+export async function getAllProjectComments(userId: string, limit: number = 40) {
+  return supabase
+    .from('project_comments')
+    .select('*, project:projects(id, title, color, client:clients(name)), user:users(full_name)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+}
+
+export async function createProjectComment(projectId: string, userId: string, content: string) {
+  return supabase
+    .from('project_comments')
+    .insert({ project_id: projectId, user_id: userId, content })
+    .select('*, user:users(full_name, avatar_url), project:projects(id, title, color, client:clients(name))')
+    .single()
+}
+
+export async function deleteProjectComment(commentId: string) {
+  return supabase.from('project_comments').delete().eq('id', commentId)
 }
 
 // ============================================
