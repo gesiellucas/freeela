@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import {
   Briefcase, X, Users, CreditCard, FolderOpen,
   CheckCircle2, ChevronDown, ChevronRight, Calendar, ShieldCheck,
@@ -231,8 +231,25 @@ export default function ProjetosView({
   // Checklist props
   onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
   onAddChecklistItem, onToggleChecklistItem, onDeleteChecklistItem,
+  onCreateProjectDirectly,
 }) {
   const [subTab, setSubTab] = useState('workflow');
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [newProject, setNewProject] = useState({ clientName: '', clientEmail: '', title: '', value: '' });
+
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (onCreateProjectDirectly) {
+      await onCreateProjectDirectly({
+        clientName: newProject.clientName,
+        clientEmail: newProject.clientEmail,
+        title: newProject.title,
+        value: parseFloat(newProject.value) || 0,
+      });
+      setIsNewProjectModalOpen(false);
+      setNewProject({ clientName: '', clientEmail: '', title: '', value: '' });
+    }
+  };
 
   const proj = selectedProject;
   const stepNumber = proj ? getStepNumber(proj.current_step) : 1;
@@ -533,9 +550,14 @@ export default function ProjetosView({
   // ── List view ────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-800 tracking-tight">Projetos</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Gerencie seus projetos ativos</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-800 tracking-tight">Projetos</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Gerencie seus projetos ativos</p>
+        </div>
+        <Button onClick={() => setIsNewProjectModalOpen(true)} icon={Plus}>
+          Novo Projeto
+        </Button>
       </div>
 
       {/* Filter tabs */}
@@ -648,6 +670,46 @@ export default function ProjetosView({
           })}
         </div>
       )}
+
+      {/* Modal de Novo Projeto */}
+      {isNewProjectModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg overflow-hidden shadow-elevated animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-slate-200/60 flex justify-between items-center">
+              <h3 className="font-semibold text-slate-800 tracking-tight">Novo Projeto Direto</h3>
+              <button onClick={() => setIsNewProjectModalOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateProject}>
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">Nome do Projeto</label>
+                  <input type="text" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="Ex: Criação de E-commerce" value={newProject.title} onChange={e => setNewProject({ ...newProject, title: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">Nome do Cliente / Empresa</label>
+                  <input type="text" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="Ex: Acme Corp" value={newProject.clientName} onChange={e => setNewProject({ ...newProject, clientName: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">E-mail do Cliente (Opcional)</label>
+                  <input type="email" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="exemplo@email.com" value={newProject.clientEmail} onChange={e => setNewProject({ ...newProject, clientEmail: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">Valor Estimado do Projeto (R$)</label>
+                  <input type="number" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="Ex: 5000" value={newProject.value} onChange={e => setNewProject({ ...newProject, value: e.target.value })} />
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Um novo cliente será automaticamente cadastrado, se necessário, e o projeto pulará a fase de lead.</p>
+              </div>
+              <div className="px-6 py-4 border-t border-slate-200/60 flex justify-end gap-3 bg-slate-50/50">
+                <Button variant="outline" type="button" onClick={() => setIsNewProjectModalOpen(false)}>Cancelar</Button>
+                <Button variant="primary" type="submit">Criar Projeto</Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
     </div>
   );
 }

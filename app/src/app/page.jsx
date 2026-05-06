@@ -38,6 +38,7 @@ import {
   LayoutDashboard,
   Timer,
   LayoutGrid,
+  Network,
 } from 'lucide-react';
 
 // Importar Supabase client e funções
@@ -53,6 +54,7 @@ import {
   getProjectById,
   createLead,
   convertLeadToProject as convertLeadToProjectAPI,
+  createProjectDirectly,
   updateTaskStatus as updateTaskStatusAPI,
   advanceProjectWorkflow,
   createPayment,
@@ -93,6 +95,8 @@ import PropostasView from '../views/PropostasView';
 import ContratosView from '../views/ContratosView';
 import PomodoroView from '../views/PomodoroView';
 import OverviewView from '../views/OverviewView';
+import EapView from '../views/EapView';
+import CronogramaView from '../views/CronogramaView';
 
 // --- Constantes e Templates ---
 
@@ -342,6 +346,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [rootDirectory, setRootDirectory] = useState(null);
   const [comercialOpen, setComercialOpen] = useState(true);
+  const [planejamentoOpen, setPlanejamentoOpen] = useState(true);
   const [leadsFilter, setLeadsFilter] = useState('active');
   const [projectsFilter, setProjectsFilter] = useState('active');
 
@@ -622,6 +627,29 @@ export default function App() {
     }
   };
 
+  const handleCreateProjectDirectly = async (projectData) => {
+    if (!userId) return;
+
+    try {
+      const { data, error } = await createProjectDirectly(userId, projectData);
+
+      if (error) throw error;
+
+      if (data) {
+        // Recarregar projetos
+        await loadAllData();
+
+        // Selecionar o novo projeto
+        const { data: fullProject } = await getProjectById(data.id);
+        setSelectedProject(fullProject);
+        setActiveTab('projects');
+      }
+    } catch (err) {
+      console.error('Erro ao criar projeto direto:', err);
+      alert('Erro ao criar projeto');
+    }
+  };
+
   const handleDeclineProposal = async () => {
     if (!leadToDecline) return;
 
@@ -837,6 +865,39 @@ export default function App() {
             </button>
           ))}
 
+          {/* Seção Planejamento */}
+          <div className="pt-4">
+            <button
+              onClick={() => setPlanejamentoOpen(!planejamentoOpen)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-500 hover:text-slate-500 transition-colors"
+            >
+              <Network size={12} />
+              <span className="text-[10px] font-bold uppercase tracking-widest flex-1 text-left">Planejamento</span>
+              <ChevronDown size={12} className={`transition-transform duration-200 ${planejamentoOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {planejamentoOpen && (
+              <div className="mt-0.5 space-y-0.5">
+                {[
+                  { id: 'eap', label: 'EAP / WBS', icon: Network },
+                  { id: 'cronograma', label: 'Cronograma', icon: Calendar },
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
+                      ${activeTab === item.id
+                        ? 'bg-brand-500 text-slate-900 font-semibold'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                  >
+                    <item.icon size={16} />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Seção Comercial */}
           <div className="pt-4">
             <button
@@ -953,6 +1014,7 @@ export default function App() {
                   onFilterChange={setProjectsFilter}
                   selectedProject={selectedProject}
                   onSelectProject={setSelectedProject}
+                  onCreateProjectDirectly={handleCreateProjectDirectly}
                   onDeclineProject={openDeclineProjectModal}
                   onArchiveProject={handleArchiveProject}
                   onAdvanceWorkflow={handleAdvanceWorkflow}
@@ -997,6 +1059,12 @@ export default function App() {
               )}
               {activeTab === 'pomodoro' && (
                 <PomodoroView />
+              )}
+              {activeTab === 'eap' && (
+                <EapView projects={projects} userId={userId} />
+              )}
+              {activeTab === 'cronograma' && (
+                <CronogramaView projects={projects} userId={userId} />
               )}
               {activeTab === 'contratos' && (
                 <ContratosView

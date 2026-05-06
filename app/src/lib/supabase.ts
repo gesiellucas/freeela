@@ -247,6 +247,43 @@ export async function advanceProjectWorkflow(projectId: string) {
   return supabase.from('projects').update({ current_step: nextStep }).eq('id', projectId)
 }
 
+export async function createProjectDirectly(userId: string, data: {
+  clientName: string
+  clientEmail?: string
+  title: string
+  value: number
+}) {
+  const email = data.clientEmail || `contato@${data.clientName.toLowerCase().replace(/\s+/g, '')}.com`
+  
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .insert({
+      user_id: userId,
+      name: data.clientName,
+      email: email,
+    })
+    .select()
+    .single()
+
+  if (clientError || !client) return { data: null, error: clientError }
+
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .insert({
+      user_id: userId,
+      client_id: client.id,
+      title: data.title,
+      value: data.value || 0,
+      current_step: 'initial_contact',
+    })
+    .select()
+    .single()
+
+  if (projectError) return { data: null, error: projectError }
+
+  return { data: project, error: null }
+}
+
 // ============================================
 // CHECKLISTS
 // ============================================
