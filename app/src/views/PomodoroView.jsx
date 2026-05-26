@@ -13,9 +13,9 @@ const DEFAULT_CONFIG = { focus: 25, shortBreak: 5, longBreak: 15, totalCycles: 4
 const CYCLE_STEPS = ['focus', 'shortBreak', 'longBreak'];
 
 const STEP_META = {
-  focus:      { label: 'Foco',         shortLabel: 'F',  icon: Brain,  ring: 'stroke-amber-400',  bg: 'bg-amber-500',   text: 'text-amber-400',  badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',  btn: 'bg-amber-500 hover:bg-amber-400 text-slate-800',  shadow: 'shadow-amber-500/20'  },
-  shortBreak: { label: 'Pausa Curta',  shortLabel: 'PC', icon: Coffee, ring: 'stroke-emerald-400', bg: 'bg-emerald-500', text: 'text-emerald-400', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', btn: 'bg-emerald-500 hover:bg-emerald-400 text-slate-900', shadow: 'shadow-emerald-500/20' },
-  longBreak:  { label: 'Pausa Longa',  shortLabel: 'PL', icon: Coffee, ring: 'stroke-sky-400',     bg: 'bg-sky-500',     text: 'text-sky-400',    badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20',         btn: 'bg-sky-500 hover:bg-sky-400 text-slate-900',         shadow: 'shadow-sky-500/20'    },
+  focus:      { label: 'Foco',         shortLabel: 'F',  icon: Brain,  ring: 'stroke-amber-400',  bg: 'bg-amber-500',   text: 'text-amber-400',  badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',  btn: 'bg-amber-500 hover:bg-amber-400 text-warm-900',  shadow: 'shadow-amber-500/20'  },
+  shortBreak: { label: 'Pausa Curta',  shortLabel: 'PC', icon: Coffee, ring: 'stroke-emerald-400', bg: 'bg-emerald-500', text: 'text-emerald-400', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', btn: 'bg-emerald-500 hover:bg-emerald-400 text-warm-900', shadow: 'shadow-emerald-500/20' },
+  longBreak:  { label: 'Pausa Longa',  shortLabel: 'PL', icon: Coffee, ring: 'stroke-sky-400',     bg: 'bg-sky-500',     text: 'text-sky-400',    badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20',         btn: 'bg-sky-500 hover:bg-sky-400 text-warm-900',         shadow: 'shadow-sky-500/20'    },
 };
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ function ProgressRing({ progress, step }) {
   return (
     <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 260 260">
       <circle cx="130" cy="130" r={R} fill="none" stroke="currentColor"
-        className="text-slate-700" strokeWidth="6" />
+        className="text-warm-800" strokeWidth="6" />
       <circle cx="130" cy="130" r={R} fill="none"
         className={STEP_META[step].ring}
         strokeWidth="6" strokeLinecap="round"
@@ -99,7 +99,7 @@ function CycleTracker({ totalCycles, currentCycle, currentStep, running }) {
             <div key={i} className="flex flex-col items-center gap-1">
               {/* Número do ciclo */}
               <span className={`text-[10px] font-bold ${
-                isCurrent ? 'text-slate-600' : isDone ? 'text-slate-400' : 'text-slate-600'
+                isCurrent ? 'text-warm-600' : isDone ? 'text-warm-500' : 'text-warm-600'
               }`}>
                 {cycleNum}
               </span>
@@ -132,7 +132,7 @@ function CycleTracker({ totalCycles, currentCycle, currentStep, running }) {
                           ? STEP_META[step].bg + ' opacity-70'
                           : status === 'active'
                             ? STEP_META[step].bg + (running ? ' animate-pulse' : '')
-                            : 'bg-slate-100'
+                            : 'bg-warm-200'
                       }`}
                     />
                   );
@@ -148,7 +148,7 @@ function CycleTracker({ totalCycles, currentCycle, currentStep, running }) {
         {CYCLE_STEPS.map(step => (
           <div key={step} className="flex items-center gap-1.5">
             <div className={`w-2 h-2 rounded-sm ${STEP_META[step].bg}`} />
-            <span className="text-[10px] text-slate-500">{STEP_META[step].label}</span>
+            <span className="text-[10px] text-warm-500">{STEP_META[step].label}</span>
           </div>
         ))}
       </div>
@@ -171,14 +171,14 @@ function AlarmModal({ step, currentCycle, totalCycles, onDismiss, onStartNext })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
-      <div className="relative bg-[#18181b] border border-slate-300 rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
-        <button onClick={onDismiss} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">
+      <div className="relative bg-[#18181b] border border-warm-400 rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <button onClick={onDismiss} className="absolute top-4 right-4 text-warm-500 hover:text-warm-600 transition-colors">
           <X size={16} />
         </button>
 
         <div className={`w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center ${
           sessionComplete ? 'bg-amber-500/15' : STEP_META[step].bg.replace('bg-', 'bg-') + '/15'
-        }`} style={{ background: sessionComplete ? 'rgba(245,158,11,0.12)' : '' }}>
+        }`} style={{ background: sessionComplete ? 'rgba(203,144,80,0.12)' : '' }}>
           {sessionComplete
             ? <Trophy size={28} className="text-amber-400" />
             : step === 'focus'
@@ -187,13 +187,13 @@ function AlarmModal({ step, currentCycle, totalCycles, onDismiss, onStartNext })
           }
         </div>
 
-        <h2 className="text-xl font-bold text-slate-800 mb-2">
+        <h2 className="text-xl font-bold text-warm-900 mb-2">
           {sessionComplete
             ? 'Sessão completa!'
             : `${STEP_META[step].label} concluída!`}
         </h2>
 
-        <p className="text-slate-500 text-sm mb-6">
+        <p className="text-warm-500 text-sm mb-6">
           {sessionComplete
             ? `Você completou todos os ${totalCycles} ciclos. Parabéns!`
             : step === 'focus'
@@ -208,7 +208,7 @@ function AlarmModal({ step, currentCycle, totalCycles, onDismiss, onStartNext })
         <div className="flex gap-3">
           <button
             onClick={onDismiss}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition-all text-sm font-medium"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-warm-400 text-warm-600 hover:bg-warm-200 transition-all text-sm font-medium"
           >
             {sessionComplete ? 'Fechar' : 'Dispensar'}
           </button>
@@ -217,10 +217,10 @@ function AlarmModal({ step, currentCycle, totalCycles, onDismiss, onStartNext })
               onClick={onStartNext}
               className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg ${
                 step === 'focus'
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-emerald-500/20'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-warm-900 shadow-emerald-500/20'
                   : step === 'shortBreak'
-                    ? 'bg-sky-500 hover:bg-sky-400 text-slate-900 shadow-sky-500/20'
-                    : 'bg-amber-500 hover:bg-amber-400 text-slate-800 shadow-amber-500/20'
+                    ? 'bg-sky-500 hover:bg-sky-400 text-warm-900 shadow-sky-500/20'
+                    : 'bg-amber-500 hover:bg-amber-400 text-warm-900 shadow-amber-500/20'
               }`}
             >
               {nextLabel}
@@ -242,22 +242,22 @@ function ConfigPanel({ config, onSave, onClose }) {
   const set = (key, val) => setLocal(p => ({ ...p, [key]: val }));
 
   const StepConfig = ({ stepKey, label, min, max }) => (
-    <div className="flex items-center gap-3 py-3 border-b border-slate-200 last:border-0">
-      <div className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${STEP_META[stepKey]?.bg ?? 'bg-slate-300'}`} />
-      <span className="text-sm text-slate-600 flex-1">{label}</span>
+    <div className="flex items-center gap-3 py-3 border-b border-warm-300 last:border-0">
+      <div className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${STEP_META[stepKey]?.bg ?? 'bg-warm-400'}`} />
+      <span className="text-sm text-warm-600 flex-1">{label}</span>
       <div className="flex items-center gap-2">
         <button
           onClick={() => set(stepKey, Math.max(min, local[stepKey] - 1))}
-          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all"
+          className="w-7 h-7 rounded-lg bg-warm-200 hover:bg-warm-300 text-warm-500 hover:text-warm-900 flex items-center justify-center transition-all"
         >
           <Minus size={12} />
         </button>
-        <span className="w-12 text-center text-sm font-mono font-semibold text-slate-800">
+        <span className="w-12 text-center text-sm font-mono font-semibold text-warm-900">
           {stepKey === 'totalCycles' ? local[stepKey] : `${local[stepKey]}min`}
         </span>
         <button
           onClick={() => set(stepKey, Math.min(max, local[stepKey] + 1))}
-          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all"
+          className="w-7 h-7 rounded-lg bg-warm-200 hover:bg-warm-300 text-warm-500 hover:text-warm-900 flex items-center justify-center transition-all"
         >
           <Plus size={12} />
         </button>
@@ -267,13 +267,13 @@ function ConfigPanel({ config, onSave, onClose }) {
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#18181b] border border-slate-300 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+      <div className="bg-[#18181b] border border-warm-400 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-bold text-slate-800">Configurar Ciclos</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={16} /></button>
+          <h3 className="font-bold text-warm-900">Configurar Ciclos</h3>
+          <button onClick={onClose} className="text-warm-500 hover:text-warm-600 transition-colors"><X size={16} /></button>
         </div>
-        <p className="text-slate-400 text-xs mb-5">Cada ciclo = Foco → Pausa Curta → Pausa Longa</p>
+        <p className="text-warm-500 text-xs mb-5">Cada ciclo = Foco → Pausa Curta → Pausa Longa</p>
 
         {/* Campos */}
         <div className="mb-2">
@@ -283,23 +283,23 @@ function ConfigPanel({ config, onSave, onClose }) {
         </div>
 
         {/* Ciclos */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5">
+        <div className="bg-warm-50 border border-warm-300 rounded-xl p-4 mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-sm bg-slate-400 flex-shrink-0" />
-            <span className="text-sm text-slate-600 flex-1">Número de ciclos</span>
+            <div className="w-2.5 h-2.5 rounded-sm bg-warm-500 flex-shrink-0" />
+            <span className="text-sm text-warm-600 flex-1">Número de ciclos</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => set('totalCycles', Math.max(1, local.totalCycles - 1))}
-                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all"
+                className="w-7 h-7 rounded-lg bg-warm-200 hover:bg-warm-300 text-warm-500 hover:text-warm-900 flex items-center justify-center transition-all"
               >
                 <Minus size={12} />
               </button>
-              <span className="w-12 text-center text-sm font-mono font-bold text-slate-800">
+              <span className="w-12 text-center text-sm font-mono font-bold text-warm-900">
                 {local.totalCycles}×
               </span>
               <button
                 onClick={() => set('totalCycles', Math.min(12, local.totalCycles + 1))}
-                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all"
+                className="w-7 h-7 rounded-lg bg-warm-200 hover:bg-warm-300 text-warm-500 hover:text-warm-900 flex items-center justify-center transition-all"
               >
                 <Plus size={12} />
               </button>
@@ -309,7 +309,7 @@ function ConfigPanel({ config, onSave, onClose }) {
 
         {/* Preview visual de 1 ciclo */}
         <div className="mb-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Preview — 1 ciclo</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-warm-500 mb-2">Preview — 1 ciclo</p>
           <div className="flex items-center gap-2">
             {CYCLE_STEPS.map((step, i) => (
               <React.Fragment key={step}>
@@ -320,7 +320,7 @@ function ConfigPanel({ config, onSave, onClose }) {
                   </div>
                 </div>
                 {i < CYCLE_STEPS.length - 1 && (
-                  <div className="text-slate-600 text-xs">→</div>
+                  <div className="text-warm-600 text-xs">→</div>
                 )}
               </React.Fragment>
             ))}
@@ -328,14 +328,14 @@ function ConfigPanel({ config, onSave, onClose }) {
         </div>
 
         {/* Resumo total */}
-        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 mb-5 flex items-center justify-between">
-          <span className="text-xs text-slate-400">Tempo total estimado</span>
-          <span className="text-sm font-bold text-slate-700 font-mono">{formatMinutes(totalMin)}</span>
+        <div className="bg-warm-50 border border-warm-300 rounded-xl px-4 py-3 mb-5 flex items-center justify-between">
+          <span className="text-xs text-warm-500">Tempo total estimado</span>
+          <span className="text-sm font-bold text-warm-800 font-mono">{formatMinutes(totalMin)}</span>
         </div>
 
         <button
           onClick={() => { onSave(local); onClose(); }}
-          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-800 font-bold rounded-xl transition-all text-sm"
+          className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-warm-900 font-bold rounded-xl transition-all text-sm"
         >
           Salvar configuração
         </button>
@@ -473,16 +473,16 @@ export default function PomodoroView() {
   const totalMin = config.totalCycles * (config.focus + config.shortBreak + config.longBreak);
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-slate-50 flex flex-col pb-10">
+    <div className="min-h-[calc(100vh-65px)] bg-warm-100 flex flex-col pb-10">
 
       {/* Header */}
       <div className="flex items-center justify-between px-8 pt-8 pb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-warm-900 flex items-center gap-2">
             <Timer size={20} className="text-amber-400" />
             Pomodoro
           </h1>
-          <p className="text-slate-500 text-xs mt-0.5">
+          <p className="text-warm-500 text-xs mt-0.5">
             {config.totalCycles} ciclos · {formatMinutes(totalMin)} totais
           </p>
         </div>
@@ -490,20 +490,20 @@ export default function PomodoroView() {
           <button
             onClick={handleRestart}
             title="Reiniciar sessão"
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-600 hover:bg-slate-100 transition-all"
+            className="p-2 rounded-xl text-warm-500 hover:text-warm-600 hover:bg-warm-200 transition-all"
           >
             <RefreshCw size={15} />
           </button>
           <button
             onClick={() => setMuted(m => !m)}
             title={muted ? 'Ativar som' : 'Silenciar'}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-600 hover:bg-slate-100 transition-all"
+            className="p-2 rounded-xl text-warm-500 hover:text-warm-600 hover:bg-warm-200 transition-all"
           >
             {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
           <button
             onClick={() => setShowConfig(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all text-xs font-medium border border-slate-200"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-warm-500 hover:text-warm-800 hover:bg-warm-200 transition-all text-xs font-medium border border-warm-300"
           >
             <Settings size={13} />
             Configurar
@@ -553,16 +553,16 @@ export default function PomodoroView() {
               <React.Fragment key={step}>
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                   isDone
-                    ? `${STEP_META[step].bg} text-slate-800 opacity-60`
+                    ? `${STEP_META[step].bg} text-warm-900 opacity-60`
                     : isCurrent
                       ? `${STEP_META[step].badge} border`
-                      : 'bg-white text-slate-500 border border-slate-200'
+                      : 'bg-warm-50 text-warm-500 border border-warm-300'
                 }`}>
                   {isDone && <CheckCircle2 size={10} />}
                   {STEP_META[step].label}
                 </div>
                 {i < CYCLE_STEPS.length - 1 && (
-                  <div className="text-slate-700 text-xs">→</div>
+                  <div className="text-warm-800 text-xs">→</div>
                 )}
               </React.Fragment>
             );
@@ -574,7 +574,7 @@ export default function PomodoroView() {
           <button
             onClick={handleReset}
             title="Reiniciar passo"
-            className="p-3 rounded-2xl bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all border border-slate-200"
+            className="p-3 rounded-2xl bg-warm-50 hover:bg-warm-200 text-warm-500 hover:text-warm-800 transition-all border border-warm-300"
           >
             <RotateCcw size={17} />
           </button>
@@ -588,7 +588,7 @@ export default function PomodoroView() {
           <button
             onClick={handleSkip}
             title="Pular"
-            className="p-3 rounded-2xl bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all border border-slate-200"
+            className="p-3 rounded-2xl bg-warm-50 hover:bg-warm-200 text-warm-500 hover:text-warm-800 transition-all border border-warm-300"
           >
             <SkipForward size={17} />
           </button>
@@ -597,17 +597,17 @@ export default function PomodoroView() {
         {/* Histórico */}
         {history.length > 0 && (
           <div className="mt-10 w-full max-w-md">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-3">Histórico</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-warm-600 mb-3">Histórico</h3>
             <div className="space-y-1.5 max-h-44 overflow-y-auto">
               {[...history].reverse().map((entry, i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white rounded-xl">
+                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-warm-50 rounded-xl">
                   <div className={`w-1.5 h-1.5 rounded-sm ${STEP_META[entry.step].bg} ${entry.skipped ? 'opacity-40' : ''}`} />
-                  <span className="text-xs text-slate-500 flex-1">
+                  <span className="text-xs text-warm-500 flex-1">
                     {STEP_META[entry.step].label}
-                    <span className="text-slate-500"> · ciclo {entry.cycle}</span>
-                    {entry.skipped && <span className="text-slate-600"> · pulado</span>}
+                    <span className="text-warm-500"> · ciclo {entry.cycle}</span>
+                    {entry.skipped && <span className="text-warm-600"> · pulado</span>}
                   </span>
-                  <span className="text-[11px] text-slate-600 font-mono">
+                  <span className="text-[11px] text-warm-600 font-mono">
                     {entry.completedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>

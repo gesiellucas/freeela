@@ -15,7 +15,22 @@
       "Bash(xxd \"d:/Workspace/GitHub/Freeela/supabase/supabase-project/volumes/garage/init.sh\")",
       "Bash(grep -E \"\\\\.\\(json|config|ts|js\\)$\")",
       "Bash(powershell -Command ':*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "PowerShell(Select-String -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\backend\\\\migrations\\\\20260213_create_initial_schema.sql\" -Pattern \"leads\" -Context 0,5 | ForEach-Object { \"Line $\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Get-ChildItem \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\backend\\\\supabase-project\" -Recurse | Where-Object { !$_.PSIsContainer } | Select-Object FullName | Format-Table -AutoSize)",
+      "PowerShell(if \\(-not $?\\) { \"File not found\" })",
+      "PowerShell(dir \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\supabase\" -Recurse | Where-Object {$_.Extension -eq \".sql\"} | Select-Object FullName)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' 'http://localhost:8000/rest/v1/leads?select=id&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk')",
+      "Bash(curl -s 'http://localhost:8000/rest/v1/leads?select=id&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk')",
+      "Bash(curl -s -X POST http://localhost:8000/rest/v1/leads -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk' -H 'Content-Type: application/json' -H 'Prefer: return=representation' -d '{\"user_id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"Test Lead\",\"email\":\"test@test.com\",\"demand\":\"Test demand\",\"status\":\"lead\",\"priority\":0}')",
+      "Bash(curl -s http://localhost:8000/rest/v1/ -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8000/pg/tables -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk')",
+      "Bash(curl -s 'http://localhost:8000/rest/v1/users?select=id,email,auth_user_id&limit=5' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc1MjU0NjQwLCJleHAiOjE5MzI5MzQ2NDB9.JR5uHTxooMpLgU_6p4-BTip6xrSsh_ddPkemxGRKRyk')",
+      "Bash(docker exec *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\" -Name)",
+      "Bash(Find \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\" -name \"globals.css\" -o -name \"*.css\" -path \"*/app/*\" -not -path \"*/node_modules/*\")",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\\\\src\" -File -Recurse | Where-Object { $_.Name -match \"theme|color|css\" } | Select-Object FullName)"
     ]
   }
 }

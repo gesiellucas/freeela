@@ -9,7 +9,7 @@ const Badge = ({ color = 'slate', children }) => {
     blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     yellow: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
     red: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    slate: 'bg-slate-100/60 text-slate-500 ',
+    slate: 'bg-warm-200/60 text-warm-500 ',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${colors[color] || colors.slate}`}>
@@ -105,7 +105,7 @@ export default function ContratosView({
         <h2 className="text-2xl font-black">Contratos</h2>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-slate-900 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-warm-900 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
         >
           <Plus size={16} /> Novo Contrato
         </button>
@@ -114,8 +114,8 @@ export default function ContratosView({
       {/* Layout principal */}
       {contracts.length === 0 ? (
         <div className="text-center py-20">
-          <FileSignature className="mx-auto text-slate-600 mb-3" size={40} />
-          <p className="text-slate-400 italic">Nenhum contrato cadastrado.</p>
+          <FileSignature className="mx-auto text-warm-600 mb-3" size={40} />
+          <p className="text-warm-500 italic">Nenhum contrato cadastrado.</p>
           <button onClick={() => setIsModalOpen(true)} className="mt-4 text-sm text-blue-600 font-bold hover:underline">
             Criar primeiro contrato →
           </button>
@@ -131,13 +131,13 @@ export default function ContratosView({
                 <div key={projectId} className="space-y-2">
                   {/* Cabeçalho do projeto */}
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-400 truncate">
+                    <h3 className="text-xs font-black text-warm-500 dark:text-warm-500 truncate">
                       {project?.title || 'Projeto'}
                     </h3>
                     {project?.client?.name && (
-                      <span className="text-[10px] text-slate-400">({project.client.name})</span>
+                      <span className="text-[10px] text-warm-500">({project.client.name})</span>
                     )}
-                    <div className="flex-1 h-px bg-slate-100/60" />
+                    <div className="flex-1 h-px bg-warm-200/60" />
                   </div>
 
                   {/* Linhas de contrato */}
@@ -151,16 +151,16 @@ export default function ContratosView({
                         className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                           isSelected
                             ? 'border-blue-400 bg-blue-900/20 border-blue-700'
-                            : 'border-slate-200/60 bg-white hover:border-slate-300 hover:bg-slate-100/50'
+                            : 'border-warm-300/60 bg-warm-50 hover:border-warm-400 hover:bg-warm-200/50'
                         }`}
                       >
-                        <FileSignature size={14} className={isSelected ? 'text-blue-500' : 'text-slate-400'} />
+                        <FileSignature size={14} className={isSelected ? 'text-blue-500' : 'text-warm-500'} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold truncate">{c.title}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge color={statusColor(c.status)}>{statusLabel(c.status)}</Badge>
                             {files.length > 0 && (
-                              <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                              <span className="flex items-center gap-1 text-[10px] text-warm-500">
                                 <Paperclip size={10} /> {files.length}
                               </span>
                             )}
@@ -184,29 +184,29 @@ export default function ContratosView({
           {syncedSelected && (
             <div className="lg:col-span-3 space-y-4">
               {/* Card de informações do contrato */}
-              <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-5">
+              <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1 min-w-0 mr-3">
                     <h3 className="font-black text-base truncate">{syncedSelected.title}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-warm-500 mt-0.5">
                       {syncedSelected.project?.title || 'Projeto'} · {syncedSelected.project?.client?.name || ''}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedContract(null)}
-                    className="p-1.5 hover:bg-slate-100/60  rounded-lg flex-shrink-0"
+                    className="p-1.5 hover:bg-warm-200/60  rounded-lg flex-shrink-0"
                   >
-                    <X size={16} className="text-slate-400" />
+                    <X size={16} className="text-warm-500" />
                   </button>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Status</p>
+                    <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Status</p>
                     <select
                       value={syncedSelected.status}
                       onChange={e => handleStatusChange(syncedSelected, e.target.value)}
-                      className="w-full bg-slate-100/60  border-none rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer"
+                      className="w-full bg-warm-200/60  border-none rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer"
                     >
                       {['draft', 'sent', 'signed', 'cancelled'].map(s => (
                         <option key={s} value={s}>{statusLabel(s)}</option>
@@ -214,16 +214,16 @@ export default function ContratosView({
                     </select>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Início</p>
-                    <p className="text-xs font-medium text-slate-700 py-1.5">
+                    <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Início</p>
+                    <p className="text-xs font-medium text-warm-800 py-1.5">
                       {syncedSelected.effective_date
                         ? new Date(syncedSelected.effective_date + 'T00:00:00').toLocaleDateString('pt-BR')
                         : '—'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Validade</p>
-                    <p className="text-xs font-medium text-slate-700 py-1.5">
+                    <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Validade</p>
+                    <p className="text-xs font-medium text-warm-800 py-1.5">
                       {syncedSelected.expiry_date
                         ? new Date(syncedSelected.expiry_date + 'T00:00:00').toLocaleDateString('pt-BR')
                         : '—'}
@@ -238,15 +238,15 @@ export default function ContratosView({
                   </p>
                 )}
                 {syncedSelected.description && (
-                  <p className="text-xs text-slate-500 dark:text-slate-500 mb-2">{syncedSelected.description}</p>
+                  <p className="text-xs text-warm-500 dark:text-warm-500 mb-2">{syncedSelected.description}</p>
                 )}
                 {syncedSelected.notes && (
-                  <p className="text-xs text-slate-400 italic">{syncedSelected.notes}</p>
+                  <p className="text-xs text-warm-500 italic">{syncedSelected.notes}</p>
                 )}
               </div>
 
               {/* Card de arquivos — estilo checklist */}
-              <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-5">
+              <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5">
                 <h3 className="font-black text-sm mb-4 flex items-center gap-2 underline decoration-blue-500 decoration-4 underline-offset-4 uppercase italic">
                   <Paperclip size={14} /> Arquivos do Contrato
                 </h3>
@@ -276,57 +276,57 @@ export default function ContratosView({
       {/* Modal — Etapa 1: dados do contrato */}
       {isModalOpen && !createdContract && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-200/60 flex items-center justify-between">
+          <div className="bg-warm-50 rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-warm-300/60 flex items-center justify-between">
               <div>
                 <h3 className="font-black text-lg">Novo Contrato</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Etapa 1 de 2 — Dados do contrato</p>
+                <p className="text-[10px] text-warm-500 mt-0.5">Etapa 1 de 2 — Dados do contrato</p>
               </div>
               <div className="flex gap-1">
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <div className="w-2 h-2 rounded-full bg-slate-200 " />
+                <div className="w-2 h-2 rounded-full bg-warm-300 " />
               </div>
             </div>
             <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Título *</label>
-                <input type="text" className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Ex: Contrato de Prestação de Serviços" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Título *</label>
+                <input type="text" className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Ex: Contrato de Prestação de Serviços" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Projeto *</label>
-                <select className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.project_id} onChange={e => setForm({ ...form, project_id: e.target.value })}>
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Projeto *</label>
+                <select className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.project_id} onChange={e => setForm({ ...form, project_id: e.target.value })}>
                   <option value="">Selecione um projeto</option>
                   {projects.map(p => <option key={p.id} value={p.id}>{p.title} — {p.client?.name} ({p.status})</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Descrição</label>
-                <textarea className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 h-16" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Descrição</label>
+                <textarea className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 h-16" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Status</label>
-                  <select className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Status</label>
+                  <select className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
                     {['draft', 'sent', 'signed', 'cancelled'].map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Data Início</label>
-                  <input type="date" className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.effective_date} onChange={e => setForm({ ...form, effective_date: e.target.value })} />
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Data Início</label>
+                  <input type="date" className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.effective_date} onChange={e => setForm({ ...form, effective_date: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Validade</label>
-                  <input type="date" className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.expiry_date} onChange={e => setForm({ ...form, expiry_date: e.target.value })} />
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Validade</label>
+                  <input type="date" className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500" value={form.expiry_date} onChange={e => setForm({ ...form, expiry_date: e.target.value })} />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Observações</label>
-                <textarea className="w-full bg-slate-100/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 h-16" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Observações</label>
+                <textarea className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 h-16" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200/60 flex justify-end gap-3">
-              <button onClick={handleCloseModal} className="px-4 py-2 border border-slate-300 text-slate-500 rounded-xl text-sm font-bold hover:bg-slate-100/50 transition-colors">Cancelar</button>
-              <button onClick={handleCreate} disabled={saving || !form.title || !form.project_id} className="px-4 py-2 bg-blue-600 text-slate-900 rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+            <div className="p-6 border-t border-warm-300/60 flex justify-end gap-3">
+              <button onClick={handleCloseModal} className="px-4 py-2 border border-warm-400 text-warm-500 rounded-xl text-sm font-bold hover:bg-warm-200/50 transition-colors">Cancelar</button>
+              <button onClick={handleCreate} disabled={saving || !form.title || !form.project_id} className="px-4 py-2 bg-blue-600 text-warm-900 rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2">
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 Criar e Anexar Arquivos →
               </button>
@@ -338,14 +338,14 @@ export default function ContratosView({
       {/* Modal — Etapa 2: upload de arquivos após criação */}
       {isModalOpen && createdContract && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-200/60 flex items-center justify-between">
+          <div className="bg-warm-50 rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-warm-300/60 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={16} className="text-green-500" />
                   <h3 className="font-black text-lg">Contrato criado!</h3>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">Etapa 2 de 2 — Anexar arquivos</p>
+                <p className="text-[10px] text-warm-500 mt-0.5">Etapa 2 de 2 — Anexar arquivos</p>
               </div>
               <div className="flex gap-1">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -353,12 +353,12 @@ export default function ContratosView({
               </div>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-slate-100/40 rounded-xl p-3">
-                <p className="text-xs font-bold text-slate-700">{createdContract.title}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">{createdContract.project?.title || 'Projeto'} · {statusLabel(createdContract.status)}</p>
+              <div className="bg-warm-200/40 rounded-xl p-3">
+                <p className="text-xs font-bold text-warm-800">{createdContract.title}</p>
+                <p className="text-[10px] text-warm-500 mt-0.5">{createdContract.project?.title || 'Projeto'} · {statusLabel(createdContract.status)}</p>
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-2">
                   Arquivos do Contrato
                 </label>
                 <FileUploader
@@ -380,10 +380,10 @@ export default function ContratosView({
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200/60 flex justify-end">
+            <div className="p-6 border-t border-warm-300/60 flex justify-end">
               <button
                 onClick={handleCloseModal}
-                className="px-6 py-2 bg-green-600 text-slate-900 rounded-xl text-sm font-bold hover:bg-green-700 transition-colors flex items-center gap-2"
+                className="px-6 py-2 bg-green-600 text-warm-900 rounded-xl text-sm font-bold hover:bg-green-700 transition-colors flex items-center gap-2"
               >
                 <CheckCircle2 size={14} /> Concluir
               </button>

@@ -12,8 +12,8 @@
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #F3EFE8;
+    color: #2B2B2B;
   }
 
   /* Custom scrollbar — thin and refined */
@@ -25,11 +25,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #D6D0C7;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #CEC8BF;
   }
 }
 
@@ -40,8 +40,8 @@
 
   /* Sidebar light slate */
   .sidebar-light {
-    background-color: #ffffff;
-    border-color: #e2e8f0;
+    background-color: #FAF8F4;
+    border-color: #D6D0C7;
   }
 
   .animate-in {
@@ -70,7 +70,7 @@
 
   /* Glow effect for brand elements */
   .glow-brand {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.20), 0 0 40px rgba(245, 158, 11, 0.08);
+    box-shadow: 0 0 20px rgba(203, 144, 80, 0.20), 0 0 40px rgba(203, 144, 80, 0.08);
   }
 }
 

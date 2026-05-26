@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
@@ -130,18 +130,18 @@ const getStepNumber = (stepKey) => {
 // --- Componentes Reutilizáveis ---
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-2xl border border-slate-200/60 shadow-card ${className}`}>
+  <div className={`bg-warm-50 rounded-2xl border border-warm-300/60 shadow-card ${className}`}>
     {children}
   </div>
 );
 
 const Button = ({ children, onClick, variant = "primary", className = "", icon: Icon, loading = false, disabled = false }) => {
   const variants = {
-    primary: "bg-brand-500 text-slate-800 hover:bg-brand-400 font-semibold shadow-sm",
-    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300/50",
-    outline: "border border-slate-300 text-slate-600 hover:bg-slate-100",
+    primary: "bg-brand-500 text-warm-900 hover:bg-brand-400 font-semibold shadow-sm",
+    secondary: "bg-warm-200 text-warm-800 hover:bg-warm-300 border border-warm-400/50",
+    outline: "border border-warm-400 text-warm-600 hover:bg-warm-200",
     danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200",
-    ghost: "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+    ghost: "text-warm-500 hover:bg-warm-200 hover:text-warm-600"
   };
 
   return (
@@ -162,7 +162,7 @@ const Badge = ({ children, color = "blue" }) => {
     green: "bg-emerald-50 text-emerald-600 border border-emerald-200",
     yellow: "bg-amber-50 text-amber-600 border border-amber-200",
     purple: "bg-violet-50 text-violet-600 border border-violet-200",
-    slate: "bg-slate-100 text-slate-500 border border-slate-300",
+    slate: "bg-warm-200 text-warm-500 border border-warm-400",
     red: "bg-red-50 text-red-600 border border-red-200"
   };
   return (
@@ -179,15 +179,15 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <Card className="w-full max-w-lg overflow-hidden shadow-elevated animate-in zoom-in-95">
-        <div className="px-6 py-4 border-b border-slate-200/60 flex justify-between items-center">
-          <h3 className="font-semibold text-slate-800 tracking-tight">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors"><X size={18} /></button>
+        <div className="px-6 py-4 border-b border-warm-300/60 flex justify-between items-center">
+          <h3 className="font-semibold text-warm-900 tracking-tight">{title}</h3>
+          <button onClick={onClose} className="text-warm-500 hover:text-warm-800 p-1 rounded-lg hover:bg-warm-200 transition-colors"><X size={18} /></button>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {children}
         </div>
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-200/60 flex justify-end gap-3 bg-slate-50/50">
+          <div className="px-6 py-4 border-t border-warm-300/60 flex justify-end gap-3 bg-warm-100/50">
             {footer}
           </div>
         )}
@@ -241,15 +241,15 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-50">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-warm-100">
       {/* Subtle background texture */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.06)_0%,_transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(203,144,80,0.06)_0%,_transparent_60%)]" />
 
       <div className="relative w-full max-w-sm mx-4">
         {/* Logo mark */}
         <img src="/logo.png" alt="Freeela" className="w-7 h-7" />
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-elevated">
+        <div className="bg-warm-50 border border-warm-300 rounded-2xl p-8 shadow-elevated">
           {!isConfigured && (
             <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl mb-6 text-xs">
               <p className="font-semibold mb-2">Supabase não configurado</p>
@@ -269,12 +269,12 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {mode === 'signup' && (
               <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Nome Completo</label>
+                <label className="text-[11px] font-semibold text-warm-500 uppercase tracking-wider block mb-2">Nome Completo</label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-slate-100 border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                  className="w-full bg-warm-200 border border-warm-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-warm-900 placeholder-warm-500 outline-none transition-all"
                   placeholder="João Silva"
                   required
                 />
@@ -282,24 +282,24 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
             )}
 
             <div>
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Email</label>
+              <label className="text-[11px] font-semibold text-warm-500 uppercase tracking-wider block mb-2">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-100 border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                className="w-full bg-warm-200 border border-warm-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-warm-900 placeholder-warm-500 outline-none transition-all"
                 placeholder="seu@email.com"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-2">Senha</label>
+              <label className="text-[11px] font-semibold text-warm-500 uppercase tracking-wider block mb-2">Senha</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-100 border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
+                className="w-full bg-warm-200 border border-warm-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 rounded-xl px-4 py-3 text-sm text-warm-900 placeholder-warm-500 outline-none transition-all"
                 placeholder="••••••••"
                 required
               />
@@ -313,7 +313,7 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
               <button
                 type="button"
                 onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                className="text-sm text-slate-500 hover:text-brand-400 transition-colors"
+                className="text-sm text-warm-500 hover:text-brand-400 transition-colors"
               >
                 {mode === 'login' ? 'Não tem conta? Criar agora' : 'Já tenho uma conta'}
               </button>
@@ -573,11 +573,24 @@ export default function App() {
     e.preventDefault();
     if (!userId) return;
 
+    if (!newLead.name.trim()) {
+      alert('Por favor, informe o nome do cliente.');
+      return;
+    }
+    if (!newLead.email.trim()) {
+      alert('Por favor, informe o e-mail de contato.');
+      return;
+    }
+    if (!newLead.demand.trim()) {
+      alert('Por favor, informe a demanda inicial.');
+      return;
+    }
+
     try {
       const leadData = {
-        name: newLead.name,
-        email: newLead.email,
-        demand: newLead.demand,
+        name: newLead.name.trim(),
+        email: newLead.email.trim(),
+        demand: newLead.demand.trim(),
         estimated_value: parseFloat(newLead.value) || 0,
         status: 'lead',
         priority: 0
@@ -595,7 +608,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Erro ao criar lead:', err);
-      alert('Erro ao criar lead');
+      alert(`Erro ao criar lead: ${err?.message || 'Tente novamente.'}`);
     }
   };
 
@@ -811,10 +824,10 @@ export default function App() {
   // Se ainda está verificando autenticação
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-warm-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center">
-            <Layers size={20} className="text-slate-800" />
+            <Layers size={20} className="text-warm-900" />
           </div>
           <Loader2 className="animate-spin text-brand-500" size={20} />
         </div>
@@ -832,12 +845,12 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+    <div className="min-h-screen bg-warm-100 text-warm-900 font-sans">
 
       {/* Sidebar — always dark */}
-      <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-slate-200 z-20 hidden lg:flex flex-col">
+      <aside className="fixed left-0 top-0 h-full w-60 bg-warm-50 border-r border-warm-300 z-20 hidden lg:flex flex-col">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-slate-200">
+        <div className="px-5 py-5 border-b border-warm-300">
           {logoText}
         </div>
 
@@ -856,8 +869,8 @@ export default function App() {
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                 ${activeTab === item.id
-                  ? 'bg-brand-500 text-slate-900 font-semibold shadow-brand'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-brand-500 text-warm-900 font-semibold shadow-brand'
+                  : 'text-warm-500 hover:text-warm-900 hover:bg-warm-200'
                 }`}
             >
               <item.icon size={16} />
@@ -869,7 +882,7 @@ export default function App() {
           <div className="pt-4">
             <button
               onClick={() => setPlanejamentoOpen(!planejamentoOpen)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-500 hover:text-slate-500 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-warm-500 hover:text-warm-500 transition-colors"
             >
               <Network size={12} />
               <span className="text-[10px] font-bold uppercase tracking-widest flex-1 text-left">Planejamento</span>
@@ -886,8 +899,8 @@ export default function App() {
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                       ${activeTab === item.id
-                        ? 'bg-brand-500 text-slate-900 font-semibold'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                        ? 'bg-brand-500 text-warm-900 font-semibold'
+                        : 'text-warm-500 hover:text-warm-900 hover:bg-warm-200'
                       }`}
                   >
                     <item.icon size={16} />
@@ -902,7 +915,7 @@ export default function App() {
           <div className="pt-4">
             <button
               onClick={() => setComercialOpen(!comercialOpen)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-500 hover:text-slate-500 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-warm-500 hover:text-warm-500 transition-colors"
             >
               <Building2 size={12} />
               <span className="text-[10px] font-bold uppercase tracking-widest flex-1 text-left">Comercial</span>
@@ -919,8 +932,8 @@ export default function App() {
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                       ${activeTab === item.id
-                        ? 'bg-brand-500 text-slate-900 font-semibold'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                        ? 'bg-brand-500 text-warm-900 font-semibold'
+                        : 'text-warm-500 hover:text-warm-900 hover:bg-warm-200'
                       }`}
                   >
                     <item.icon size={16} />
@@ -932,19 +945,19 @@ export default function App() {
           </div>
         </nav>
 
-        <div className="p-3 border-t border-slate-200 space-y-2">
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+        <div className="p-3 border-t border-warm-300 space-y-2">
+          <div className="rounded-xl bg-warm-100 border border-warm-300 p-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${rootDirectory ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-slate-400">Drive Local</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${rootDirectory ? 'bg-emerald-500' : 'bg-warm-400'}`}></div>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-warm-500">Drive Local</span>
             </div>
-            <p className="text-[11px] text-slate-500 leading-relaxed mb-2.5">Vincule sua pasta para automação de diretórios.</p>
-            <button onClick={handleSelectRoot} className="w-full text-[11px] font-medium text-slate-600 bg-white hover:bg-slate-100 rounded-lg py-1.5 transition-colors border border-slate-300">
+            <p className="text-[11px] text-warm-500 leading-relaxed mb-2.5">Vincule sua pasta para automação de diretórios.</p>
+            <button onClick={handleSelectRoot} className="w-full text-[11px] font-medium text-warm-600 bg-warm-50 hover:bg-warm-200 rounded-lg py-1.5 transition-colors border border-warm-400">
               {rootDirectory ? "Pasta Vinculada ✓" : "Vincular pasta"}
             </button>
           </div>
 
-          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all text-sm font-medium">
+          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-warm-500 hover:text-warm-800 hover:bg-warm-200 transition-all text-sm font-medium">
             <LogOut size={15} />
             <span>Sair</span>
           </button>
@@ -953,19 +966,19 @@ export default function App() {
 
       {/* Main Content */}
       <main className="lg:ml-60 min-h-screen">
-        <header className="sticky top-0 bg-slate-50/90 backdrop-blur-md border-b border-slate-200/50 px-8 py-3.5 flex items-center justify-between z-10">
+        <header className="sticky top-0 bg-warm-100/90 backdrop-blur-md border-b border-warm-300/50 px-8 py-3.5 flex items-center justify-between z-10">
           <div className="relative w-80 max-w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-500" size={14} />
             <input
               type="text"
               placeholder="Pesquisar projetos, clientes..."
-              className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-600 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-300 transition-all"
+              className="w-full bg-warm-50 border border-warm-300 rounded-xl py-2 pl-9 pr-4 text-sm text-warm-600 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-400 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-brand-500 font-bold text-xs">
+            <div className="w-8 h-8 rounded-xl bg-warm-50 border border-warm-300 flex items-center justify-center text-brand-500 font-bold text-xs">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </div>
           </div>
@@ -1096,20 +1109,20 @@ export default function App() {
       >
         <form className="space-y-4" onSubmit={handleAddLead}>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">Nome do Cliente/Empresa</label>
-            <input type="text" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} required />
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Nome do Cliente/Empresa</label>
+            <input type="text" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="Ex: Acme Corp" value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">E-mail de Contato</label>
-            <input type="email" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({ ...newLead, email: e.target.value })} required />
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">E-mail de Contato</label>
+            <input type="email" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="exemplo@email.com" value={newLead.email} onChange={e => setNewLead({ ...newLead, email: e.target.value })} required />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">Demanda Inicial</label>
-            <textarea className="w-full bg-slate-100 dark:bg-slate-100 border border-slate-200 dark:border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all h-24 resize-none" placeholder="Descreva brevemente o que o cliente precisa..." value={newLead.demand} onChange={e => setNewLead({ ...newLead, demand: e.target.value })} required></textarea>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Demanda Inicial</label>
+            <textarea className="w-full bg-warm-200 dark:bg-warm-200 border border-warm-300 dark:border-warm-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all h-24 resize-none" placeholder="Descreva brevemente o que o cliente precisa..." value={newLead.demand} onChange={e => setNewLead({ ...newLead, demand: e.target.value })} required></textarea>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">Budget Estimado (R$)</label>
-            <input type="number" className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({ ...newLead, value: e.target.value })} />
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Budget Estimado (R$)</label>
+            <input type="number" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="Ex: 5000" value={newLead.value} onChange={e => setNewLead({ ...newLead, value: e.target.value })} />
           </div>
         </form>
       </Modal>
@@ -1147,18 +1160,18 @@ export default function App() {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">
               Motivo do declínio (opcional)
             </label>
             <textarea
-              className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all h-24 resize-none"
+              className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all h-24 resize-none"
               placeholder="Ex: Orçamento acima do esperado, prazo incompatível, cliente não respondeu..."
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
             />
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-warm-500">
             Registrar o motivo ajuda a entender padrões de leads perdidos.
           </p>
         </div>
@@ -1197,11 +1210,11 @@ export default function App() {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">
               Motivo do declínio (opcional)
             </label>
             <textarea
-              className="w-full bg-slate-100/60 border border-slate-300/60 rounded-xl px-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-slate-400 transition-all h-24 resize-none"
+              className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all h-24 resize-none"
               placeholder="Ex: Cliente cancelou, proposta não aprovada, projeto inviável..."
               value={declineProjectReason}
               onChange={(e) => setDeclineProjectReason(e.target.value)}

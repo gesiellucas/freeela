@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Network, Plus, Trash2, Edit2, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Loader2, Save } from 'lucide-react';
 import { getEapByProjectId, createEap, createEapItem, updateEapItem, deleteEapItem } from '../lib/eap';
 
@@ -144,8 +144,8 @@ const EapView = ({ projects, userId }) => {
       case 'Fase': return 'bg-blue-100 text-blue-800';
       case 'Entregavel': return 'bg-emerald-100 text-emerald-800';
       case 'Pacote_Trabalho': return 'bg-purple-100 text-purple-800';
-      case 'Tarefa': return 'bg-slate-100 text-slate-800';
-      default: return 'bg-slate-100 text-slate-800';
+      case 'Tarefa': return 'bg-warm-200 text-warm-900';
+      default: return 'bg-warm-200 text-warm-900';
     }
   };
 
@@ -155,29 +155,29 @@ const EapView = ({ projects, userId }) => {
 
     return (
       <div key={node.id} className="mb-2">
-        <div className={`flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-all ml-${(node.nivel - 1) * 6}`}>
+        <div className={`flex items-center justify-between p-3 bg-warm-50 border border-warm-300 rounded-xl hover:shadow-sm transition-all ml-${(node.nivel - 1) * 6}`}>
           <div className="flex items-center gap-3">
             <button 
               onClick={() => toggleExpand(node.id)}
-              className="text-slate-400 hover:text-brand-500 w-5 h-5 flex items-center justify-center"
+              className="text-warm-500 hover:text-brand-500 w-5 h-5 flex items-center justify-center"
             >
               {hasChildren ? (isExpanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>) : <div className="w-4 h-4" />}
             </button>
-            <span className="font-mono text-xs text-slate-500 font-bold w-12">{node.codigo_estruturado}</span>
+            <span className="font-mono text-xs text-warm-500 font-bold w-12">{node.codigo_estruturado}</span>
             
             {editingItem === node.id ? (
               <div className="flex items-center gap-2">
                 <input 
                   type="text" 
                   defaultValue={node.nome}
-                  className="px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className="px-2 py-1 text-sm border border-warm-400 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
                   onBlur={(e) => handleUpdateItem(node.id, { nome: e.target.value })}
                   onKeyDown={(e) => e.key === 'Enter' && handleUpdateItem(node.id, { nome: e.target.value })}
                   autoFocus
                 />
               </div>
             ) : (
-              <span className="font-medium text-slate-700 text-sm">{node.nome}</span>
+              <span className="font-medium text-warm-800 text-sm">{node.nome}</span>
             )}
             
             <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold tracking-wide ${getBadgeColor(node.tipo_item)}`}>
@@ -185,21 +185,21 @@ const EapView = ({ projects, userId }) => {
             </span>
             
             {/* Progress Bar (simple visual) */}
-            <div className="w-24 bg-slate-100 h-2 rounded-full overflow-hidden ml-4 flex items-center">
+            <div className="w-24 bg-warm-200 h-2 rounded-full overflow-hidden ml-4 flex items-center">
               <div className="bg-emerald-500 h-full" style={{ width: `${node.percentual_concluido || 0}%` }}></div>
             </div>
-            <span className="text-xs text-slate-400 w-8">{node.percentual_concluido || 0}%</span>
+            <span className="text-xs text-warm-500 w-8">{node.percentual_concluido || 0}%</span>
           </div>
 
           <div className="flex items-center gap-2 opacity-0 hover:opacity-100 transition-opacity">
-            <button onClick={() => setNewItemParentId(node.id)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-md hover:text-brand-500" title="Adicionar Sub-item">
+            <button onClick={() => setNewItemParentId(node.id)} className="p-1.5 text-warm-500 hover:bg-warm-200 rounded-md hover:text-brand-500" title="Adicionar Sub-item">
               <Plus size={14} />
             </button>
-            <button onClick={() => setEditingItem(node.id)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-md hover:text-blue-500" title="Editar">
+            <button onClick={() => setEditingItem(node.id)} className="p-1.5 text-warm-500 hover:bg-warm-200 rounded-md hover:text-blue-500" title="Editar">
               <Edit2 size={14} />
             </button>
             {node.parent_id !== null && ( // Don't delete root here
-              <button onClick={() => handleDeleteItem(node.id)} className="p-1.5 text-slate-400 hover:bg-red-50 rounded-md hover:text-red-500" title="Excluir">
+              <button onClick={() => handleDeleteItem(node.id)} className="p-1.5 text-warm-500 hover:bg-red-50 rounded-md hover:text-red-500" title="Excluir">
                 <Trash2 size={14} />
               </button>
             )}
@@ -213,14 +213,14 @@ const EapView = ({ projects, userId }) => {
               <input
                 type="text"
                 placeholder="Nome do item..."
-                className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                className="flex-1 px-3 py-2 text-sm border border-warm-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 value={newItemName}
                 onChange={e => setNewItemName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddItem(node.id)}
                 autoFocus
               />
               <select 
-                className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 bg-white"
+                className="px-3 py-2 text-sm border border-warm-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 bg-warm-50"
                 value={newItemType}
                 onChange={e => setNewItemType(e.target.value)}
               >
@@ -229,10 +229,10 @@ const EapView = ({ projects, userId }) => {
                 <option value="Pacote_Trabalho">Pacote de Trabalho</option>
                 <option value="Tarefa">Tarefa</option>
               </select>
-              <button type="button" onClick={() => handleAddItem(node.id)} className="bg-brand-500 text-slate-800 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-brand-400">
+              <button type="button" onClick={() => handleAddItem(node.id)} className="bg-brand-500 text-warm-900 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-brand-400">
                 Adicionar
               </button>
-              <button type="button" onClick={() => setNewItemParentId(null)} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg">
+              <button type="button" onClick={() => setNewItemParentId(null)} className="px-4 py-2 text-sm text-warm-500 hover:bg-warm-200 rounded-lg">
                 Cancelar
               </button>
             </div>
@@ -252,12 +252,12 @@ const EapView = ({ projects, userId }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">EAP / WBS</h2>
-          <p className="text-sm text-slate-500 mt-1">Estrutura Analítica do Projeto orientada a entregáveis</p>
+          <h2 className="text-2xl font-bold tracking-tight text-warm-900">EAP / WBS</h2>
+          <p className="text-sm text-warm-500 mt-1">Estrutura Analítica do Projeto orientada a entregáveis</p>
         </div>
         <div className="w-72">
           <select
-            className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full bg-warm-50 border border-warm-400 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
           >
@@ -270,12 +270,12 @@ const EapView = ({ projects, userId }) => {
       </div>
 
       {!selectedProjectId ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+        <div className="bg-warm-50 border border-warm-300 rounded-2xl p-12 text-center">
           <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Network size={32} className="text-brand-600" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">Selecione um projeto</h3>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto">
+          <h3 className="text-lg font-semibold text-warm-900 mb-2">Selecione um projeto</h3>
+          <p className="text-warm-500 text-sm max-w-sm mx-auto">
             Escolha um projeto no menu acima para gerenciar sua Estrutura Analítica de Projeto.
           </p>
         </div>
@@ -284,32 +284,32 @@ const EapView = ({ projects, userId }) => {
           <Loader2 className="animate-spin text-brand-500" size={32} />
         </div>
       ) : !eap ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-          <Network size={40} className="text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">EAP não iniciada</h3>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">
+        <div className="bg-warm-50 border border-warm-300 rounded-2xl p-12 text-center">
+          <Network size={40} className="text-warm-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-warm-900 mb-2">EAP não iniciada</h3>
+          <p className="text-warm-500 text-sm max-w-sm mx-auto mb-6">
             Este projeto ainda não possui uma Estrutura Analítica. A EAP ajuda a decompor o escopo em entregáveis menores.
           </p>
           <button 
             onClick={handleCreateEap}
-            className="bg-brand-500 text-slate-800 px-6 py-2.5 rounded-xl font-semibold hover:bg-brand-400 transition-colors inline-flex items-center gap-2"
+            className="bg-brand-500 text-warm-900 px-6 py-2.5 rounded-xl font-semibold hover:bg-brand-400 transition-colors inline-flex items-center gap-2"
           >
             <Plus size={18} />
             Criar Estrutura Inicial
           </button>
         </div>
       ) : (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+        <div className="bg-warm-100 border border-warm-300 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6 pb-6 border-b border-warm-300">
             <div>
-              <h3 className="font-semibold text-slate-800 text-lg">{eap.name}</h3>
-              <p className="text-sm text-slate-500 mt-0.5">{items.length} itens planejados</p>
+              <h3 className="font-semibold text-warm-900 text-lg">{eap.name}</h3>
+              <p className="text-sm text-warm-500 mt-0.5">{items.length} itens planejados</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
+              <button className="px-4 py-2 bg-warm-50 border border-warm-400 text-warm-800 rounded-xl text-sm font-medium hover:bg-warm-100 transition-colors">
                 Recalcular Progressos
               </button>
-              <button className="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-warm-900 text-white rounded-xl text-sm font-medium hover:bg-warm-800 transition-colors flex items-center gap-2">
                 <Save size={16} />
                 Salvar Baseline
               </button>
@@ -321,7 +321,7 @@ const EapView = ({ projects, userId }) => {
           </div>
           
           {items.length === 0 && (
-             <div className="text-center py-10 text-slate-500">Nenhum item na EAP.</div>
+             <div className="text-center py-10 text-warm-500">Nenhum item na EAP.</div>
           )}
         </div>
       )}

@@ -29,63 +29,63 @@ export default function FinanceiroView({ projects, onSelectProject }) {
   return (
     <div className="space-y-8 animate-in fade-in">
       <div>
-        <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Financeiro</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Visão geral das suas receitas</p>
+        <h2 className="text-2xl font-bold text-warm-900 tracking-tight">Financeiro</h2>
+        <p className="text-sm text-warm-500 mt-0.5">Visão geral das suas receitas</p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* A Receber */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-card p-6 border-l-[3px] border-l-amber-400">
+        <div className="bg-warm-50 rounded-2xl border border-warm-300/60 shadow-card p-6 border-l-[3px] border-l-amber-400">
           <div className="flex items-start justify-between mb-4">
             <div className="w-10 h-10 bg-amber-900/20 rounded-xl flex items-center justify-center">
               <Clock className="text-amber-500" size={18} />
             </div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500 bg-amber-900/20 px-2 py-1 rounded-md">Pendente</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">A Receber</p>
-          <p className="text-3xl font-bold font-mono text-slate-800 tracking-tight">
+          <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-1">A Receber</p>
+          <p className="text-3xl font-bold font-mono text-warm-900 tracking-tight">
             R$ {totalPending.toLocaleString('pt-BR')}
           </p>
-          <p className="text-[11px] text-slate-500 mt-2">em {billableProjects.length} projeto{billableProjects.length !== 1 ? 's' : ''}</p>
+          <p className="text-[11px] text-warm-500 mt-2">em {billableProjects.length} projeto{billableProjects.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Já Recebido */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-card p-6 border-l-[3px] border-l-emerald-400">
+        <div className="bg-warm-50 rounded-2xl border border-warm-300/60 shadow-card p-6 border-l-[3px] border-l-emerald-400">
           <div className="flex items-start justify-between mb-4">
             <div className="w-10 h-10 bg-emerald-900/20 rounded-xl flex items-center justify-center">
               <TrendingUp className="text-emerald-500" size={18} />
             </div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded-md">Recebido</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Já Recebido</p>
+          <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-1">Já Recebido</p>
           <p className="text-3xl font-bold font-mono text-emerald-400 tracking-tight">
             R$ {totalBilled.toLocaleString('pt-BR')}
           </p>
-          <p className="text-[11px] text-slate-500 mt-2">pagamentos confirmados</p>
+          <p className="text-[11px] text-warm-500 mt-2">pagamentos confirmados</p>
         </div>
 
         {/* Em Pagamento */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-card p-6 border-l-[3px] border-l-blue-400">
+        <div className="bg-warm-50 rounded-2xl border border-warm-300/60 shadow-card p-6 border-l-[3px] border-l-blue-400">
           <div className="flex items-start justify-between mb-4">
             <div className="w-10 h-10 bg-blue-900/20 rounded-xl flex items-center justify-center">
               <DollarSign className="text-blue-400" size={18} />
             </div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400 bg-blue-900/20 px-2 py-1 rounded-md">Ativo</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Em Pagamento</p>
-          <p className="text-3xl font-bold font-mono text-slate-800 tracking-tight">
+          <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-1">Em Pagamento</p>
+          <p className="text-3xl font-bold font-mono text-warm-900 tracking-tight">
             {billableProjects.length}
           </p>
-          <p className="text-[11px] text-slate-500 mt-2">projetos nas etapas finais</p>
+          <p className="text-[11px] text-warm-500 mt-2">projetos nas etapas finais</p>
         </div>
       </div>
 
       {/* Projects grid */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">Visão por Projeto</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-warm-500 mb-4">Visão por Projeto</h3>
         {activeProjects.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-slate-500 text-sm">
+          <div className="flex items-center justify-center py-16 text-warm-500 text-sm">
             Nenhum projeto ativo
           </div>
         ) : (
@@ -99,41 +99,41 @@ export default function FinanceiroView({ projects, onSelectProject }) {
 
               return (
                 <div key={p.id}
-                  className="bg-white rounded-2xl border border-slate-200/60 shadow-card p-5 hover:shadow-elevated hover:border-slate-300 transition-all">
+                  className="bg-warm-50 rounded-2xl border border-warm-300/60 shadow-card p-5 hover:shadow-elevated hover:border-warm-400 transition-all">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1 min-w-0 mr-3">
-                      <p className="font-semibold text-sm text-slate-800 truncate">{p.client?.name || 'Cliente'}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">{p.title}</p>
+                      <p className="font-semibold text-sm text-warm-900 truncate">{p.client?.name || 'Cliente'}</p>
+                      <p className="text-[11px] text-warm-500 mt-0.5 truncate">{p.title}</p>
                     </div>
-                    <span className="font-bold font-mono text-sm text-slate-700 whitespace-nowrap">
+                    <span className="font-bold font-mono text-sm text-warm-800 whitespace-nowrap">
                       R$ {(p.value || 0).toLocaleString('pt-BR')}
                     </span>
                   </div>
 
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-400 font-medium">Faturado</span>
+                      <span className="text-warm-500 font-medium">Faturado</span>
                       <span className="font-semibold font-mono text-emerald-400">
                         R$ {totalPaid.toLocaleString('pt-BR')}
                       </span>
                     </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-warm-200 rounded-full overflow-hidden">
                       <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                     </div>
                     {isBillable && pending > 0 && (
                       <div className="flex justify-between text-xs mt-1">
-                        <span className="text-slate-400 font-medium">A Receber</span>
+                        <span className="text-warm-500 font-medium">A Receber</span>
                         <span className="font-semibold font-mono text-amber-400">R$ {pending.toLocaleString('pt-BR')}</span>
                       </div>
                     )}
                     {!isBillable && (
-                      <p className="text-[10px] text-slate-500 italic">Aguardando conclusão do desenvolvimento</p>
+                      <p className="text-[10px] text-warm-500 italic">Aguardando conclusão do desenvolvimento</p>
                     )}
                   </div>
 
                   <button
                     onClick={() => onSelectProject(p)}
-                    className="w-full flex items-center justify-center gap-2 bg-slate-100/60 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-xl py-2.5 text-xs font-semibold transition-colors border border-slate-300/60"
+                    className="w-full flex items-center justify-center gap-2 bg-warm-200/60 hover:bg-warm-200 text-warm-500 hover:text-warm-800 rounded-xl py-2.5 text-xs font-semibold transition-colors border border-warm-400/60"
                   >
                     Gerenciar Faturas <ArrowRight size={12} />
                   </button>

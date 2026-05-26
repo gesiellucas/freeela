@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Loader2 } from 'lucide-react';
 import { getEapByProjectId, updateEapItem } from '../lib/eap';
 import Gantt from 'frappe-gantt';
@@ -112,12 +112,12 @@ const CronogramaView = ({ projects, userId }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">Cronograma</h2>
-          <p className="text-sm text-slate-500 mt-1">Visualização em Gráfico de Gantt</p>
+          <h2 className="text-2xl font-bold tracking-tight text-warm-900">Cronograma</h2>
+          <p className="text-sm text-warm-500 mt-1">Visualização em Gráfico de Gantt</p>
         </div>
         <div className="w-72">
           <select
-            className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full bg-warm-50 border border-warm-400 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
           >
@@ -130,12 +130,12 @@ const CronogramaView = ({ projects, userId }) => {
       </div>
 
       {!selectedProjectId ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+        <div className="bg-warm-50 border border-warm-300 rounded-2xl p-12 text-center">
           <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Calendar size={32} className="text-brand-600" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">Selecione um projeto</h3>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto">
+          <h3 className="text-lg font-semibold text-warm-900 mb-2">Selecione um projeto</h3>
+          <p className="text-warm-500 text-sm max-w-sm mx-auto">
             Escolha um projeto no menu acima para visualizar seu cronograma.
           </p>
         </div>
@@ -144,21 +144,21 @@ const CronogramaView = ({ projects, userId }) => {
           <Loader2 className="animate-spin text-brand-500" size={32} />
         </div>
       ) : items.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-          <Calendar size={40} className="text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">EAP Vazia</h3>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">
+        <div className="bg-warm-50 border border-warm-300 rounded-2xl p-12 text-center">
+          <Calendar size={40} className="text-warm-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-warm-900 mb-2">EAP Vazia</h3>
+          <p className="text-warm-500 text-sm max-w-sm mx-auto mb-6">
             O projeto atual não possui itens na EAP. Vá até o módulo EAP/WBS e adicione itens para visualizá-los aqui.
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-warm-50 border border-warm-300 rounded-2xl p-6 shadow-sm">
            <div className="flex justify-end gap-2 mb-4">
-              <button onClick={() => changeViewMode('Quarter Day')} className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg">1/4 Dia</button>
-              <button onClick={() => changeViewMode('Half Day')} className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg">1/2 Dia</button>
-              <button onClick={() => changeViewMode('Day')} className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg">Dia</button>
+              <button onClick={() => changeViewMode('Quarter Day')} className="px-3 py-1 text-sm bg-warm-200 hover:bg-warm-300 rounded-lg">1/4 Dia</button>
+              <button onClick={() => changeViewMode('Half Day')} className="px-3 py-1 text-sm bg-warm-200 hover:bg-warm-300 rounded-lg">1/2 Dia</button>
+              <button onClick={() => changeViewMode('Day')} className="px-3 py-1 text-sm bg-warm-200 hover:bg-warm-300 rounded-lg">Dia</button>
               <button onClick={() => changeViewMode('Week')} className="px-3 py-1 text-sm bg-brand-100 text-brand-700 hover:bg-brand-200 rounded-lg font-medium">Semana</button>
-              <button onClick={() => changeViewMode('Month')} className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg">Mês</button>
+              <button onClick={() => changeViewMode('Month')} className="px-3 py-1 text-sm bg-warm-200 hover:bg-warm-300 rounded-lg">Mês</button>
            </div>
            <div className="overflow-x-auto w-full">
              <svg ref={ganttRef} className="w-full"></svg>
