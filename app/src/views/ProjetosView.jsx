@@ -5,6 +5,7 @@ import {
   DollarSign, Archive, ArrowRight, Plus, Trash2, Pencil,
   ChevronUp, Minus, ArrowDown, Check, Square, CheckSquare,
   FileText, FileSignature, Receipt, UploadCloud, Download, ExternalLink,
+  Info,
 } from 'lucide-react';
 import { supabase, uploadFile } from '../lib/supabase';
 
@@ -1826,7 +1827,7 @@ export default function ProjetosView({
                             onDelete={onDeleteChecklist}
                             onAddItem={onAddChecklistItem}
                             onToggleItem={onToggleChecklistItem}
-                            onDeleteItem={onDeleteItem}
+                            onDeleteItem={onDeleteChecklistItem}
                             onUpdateChecklist={onUpdateChecklist}
                           />
                         );
