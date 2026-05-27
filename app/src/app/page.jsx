@@ -100,16 +100,6 @@ import CronogramaView from '../views/CronogramaView';
 
 // --- Constantes e Templates ---
 
-const FOLDER_TEMPLATE = [
-  "01_Briefings",
-  "02_Propostas",
-  "03_Contratos",
-  "04_Projeto",
-  "04_Projeto/src",
-  "04_Projeto/assets",
-  "05_Pagamentos",
-  "06_Final"
-];
 
 const WORKFLOW_STEPS = [
   { id: 1, label: "Contato Inicial", key: "initial_contact", icon: <Users size={16} />, desc: "Registro do lead e e-mail de boas-vindas" },
@@ -344,7 +334,6 @@ export default function App() {
   const [fiscalNotes, setFiscalNotes] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [rootDirectory, setRootDirectory] = useState(null);
   const [comercialOpen, setComercialOpen] = useState(true);
   const [planejamentoOpen, setPlanejamentoOpen] = useState(true);
   const [leadsFilter, setLeadsFilter] = useState('active');
@@ -790,44 +779,6 @@ export default function App() {
     }
   };
 
-  const handleSelectRoot = async () => {
-    try {
-      const selectedPath = await window.electronAPI?.selectDirectory();
-      if (selectedPath) {
-        setRootDirectory(selectedPath);
-      }
-    } catch (err) {
-      console.error("Erro ao selecionar pasta:", err);
-    }
-  };
-
-  const createProjectFolders = async (proj) => {
-    if (!rootDirectory) return false;
-    try {
-      const result = await window.electronAPI?.createProjectFolders({
-        rootPath: rootDirectory,
-        clientName: proj.client?.name || proj.clientName || 'Cliente',
-        folders: FOLDER_TEMPLATE,
-      });
-      if (result?.success) {
-        // Atualizar no banco que as pastas foram criadas
-        await supabase
-          .from('projects')
-          .update({ folders_created: true })
-          .eq('id', proj.id);
-
-        // Atualizar localmente
-        setProjects(projects.map(p => p.id === proj.id ? { ...p, folders_created: true } : p));
-        return true;
-      }
-      console.error(result?.error);
-      return false;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  };
-
   const handleLogout = async () => {
     await signOut();
     setUser(null);
@@ -969,16 +920,6 @@ export default function App() {
         </nav>
 
         <div className="p-3 border-t border-warm-300 space-y-2">
-          <div className="rounded-xl bg-warm-100 border border-warm-300 p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${rootDirectory ? 'bg-emerald-500' : 'bg-warm-400'}`}></div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-warm-500">Drive Local</span>
-            </div>
-            <p className="text-[11px] text-warm-500 leading-relaxed mb-2.5">Vincule sua pasta para automação de diretórios.</p>
-            <button onClick={handleSelectRoot} className="w-full text-[11px] font-medium text-warm-600 bg-warm-50 hover:bg-warm-200 rounded-lg py-1.5 transition-colors border border-warm-400">
-              {rootDirectory ? "Pasta Vinculada ✓" : "Vincular pasta"}
-            </button>
-          </div>
 
           <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-warm-500 hover:text-warm-800 hover:bg-warm-200 transition-all text-sm font-medium">
             <LogOut size={15} />
@@ -1056,7 +997,6 @@ export default function App() {
                   onAdvanceWorkflow={handleAdvanceWorkflow}
                   onUpdateTask={updateTaskStatus}
                   onUpdateProject={handleUpdateProject}
-                  createProjectFolders={createProjectFolders}
                   onCreateChecklist={handleCreateChecklist}
                   onUpdateChecklist={handleUpdateChecklist}
                   onDeleteChecklist={handleDeleteChecklist}

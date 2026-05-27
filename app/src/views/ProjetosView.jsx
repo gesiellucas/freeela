@@ -1526,7 +1526,6 @@ export default function ProjetosView({
   projects, filter, onFilterChange, selectedProject, onSelectProject,
   onDeclineProject, onArchiveProject, onAdvanceWorkflow, onUpdateTask,
   onUpdateProject,
-  createProjectFolders,
   // Checklist props
   onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
   onAddChecklistItem, onToggleChecklistItem, onDeleteChecklistItem,
@@ -1721,14 +1720,9 @@ export default function ProjetosView({
               <Button variant="secondary" className="h-9 text-xs px-3" icon={Archive} onClick={() => onArchiveProject(proj.id)}>Arquivar</Button>
             )}
             {proj.status === 'active' && (
-              <>
-                <Button variant="outline" icon={FolderOpen} className="h-9 text-xs px-3" onClick={() => createProjectFolders && createProjectFolders(proj)} disabled={proj.folders_created}>
-                  {proj.folders_created ? 'Pastas OK' : 'Criar Pastas'}
-                </Button>
-                <Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
-                  {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
-                </Button>
-              </>
+              <Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
+                {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
+              </Button>
             )}
           </div>
         </div>
