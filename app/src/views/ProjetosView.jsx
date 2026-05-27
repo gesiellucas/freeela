@@ -1543,6 +1543,78 @@ export default function ProjetosView({
     });
   }, []);
 
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: '', company: '', contact_person: '', contact_position: '',
+    phone: '', email: '', cpf_cnpj: '', address: '', city: '', state: '', zip_code: '', notes: ''
+  });
+  const [savingContact, setSavingContact] = useState(false);
+
+  useEffect(() => {
+    setEditingContact(false);
+  }, [selectedProject?.id]);
+
+  const handleStartEditContact = () => {
+    const c = proj?.client || {};
+    setContactForm({
+      name: c.name || '',
+      company: c.company || '',
+      contact_person: c.contact_person || '',
+      contact_position: c.contact_position || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      cpf_cnpj: c.cpf_cnpj || '',
+      address: c.address || '',
+      city: c.city || '',
+      state: c.state || '',
+      zip_code: c.zip_code || '',
+      notes: c.notes || '',
+    });
+    setEditingContact(false); // will be toggled to true below or we can just set it
+    setEditingContact(true);
+  };
+
+  const handleSaveContact = async () => {
+    if (!contactForm.name) {
+      alert('O nome do cliente é obrigatório.');
+      return;
+    }
+    setSavingContact(true);
+    try {
+      const clientId = proj.client_id || proj.client?.id;
+      if (!clientId) throw new Error('Cliente não encontrado no projeto.');
+
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: contactForm.name,
+          company: contactForm.company || null,
+          contact_person: contactForm.contact_person || null,
+          contact_position: contactForm.contact_position || null,
+          phone: contactForm.phone || null,
+          email: contactForm.email,
+          cpf_cnpj: contactForm.cpf_cnpj || null,
+          address: contactForm.address || null,
+          city: contactForm.city || null,
+          state: contactForm.state || null,
+          zip_code: contactForm.zip_code || null,
+          notes: contactForm.notes || null,
+        })
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      if (onUpdateProject) {
+        await onUpdateProject(proj.id, { updated_at: new Date().toISOString() });
+      }
+      setEditingContact(false);
+    } catch (err) {
+      alert('Erro ao atualizar contato: ' + (err.message || err));
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
   const handleCreateProject = async (e) => {
     e.preventDefault();
     if (onCreateProjectDirectly) {
@@ -1717,55 +1789,219 @@ export default function ProjetosView({
                   <h4 className="text-sm font-bold text-warm-900">Etapa {activeStepId}: {WORKFLOW_STEPS[activeStepId - 1]?.label}</h4>
                   <p className="text-xs text-warm-500">{WORKFLOW_STEPS[activeStepId - 1]?.desc}</p>
                 </div>
-                {activeStepId === stepNumber && stepNumber < 7 && (
-                  <Button variant="primary" className="py-1.5 px-3 text-xs" onClick={() => onAdvanceWorkflow(proj.id)}>
-                    Concluir e Avançar Etapa
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {activeStepId === 1 && (
+                    editingContact ? (
+                      <>
+                        <Button variant="outline" className="py-1.5 px-3 text-xs" onClick={() => setEditingContact(false)}>
+                          Cancelar
+                        </Button>
+                        <Button variant="primary" className="py-1.5 px-3 text-xs" onClick={handleSaveContact} loading={savingContact}>
+                          Salvar Contato
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="secondary" className="py-1.5 px-3 text-xs" onClick={handleStartEditContact}>
+                        Editar Contato
+                      </Button>
+                    )
+                  )}
+                  {activeStepId === stepNumber && stepNumber < 7 && !editingContact && (
+                    <Button variant="primary" className="py-1.5 px-3 text-xs" onClick={() => onAdvanceWorkflow(proj.id)}>
+                      Concluir e Avançar Etapa
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Step Content Renderers */}
               {activeStepId === 1 && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Card className="p-5 space-y-4">
-                      <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
-                        <Users size={15} />
-                        Dados de Contato
-                      </h4>
-                      <div className="space-y-3 text-sm text-warm-600">
-                        <div className="flex justify-between"><span className="font-medium">Nome do Cliente:</span> <span className="text-warm-900 font-semibold">{proj.client?.name || 'Não informado'}</span></div>
-                        <div className="flex justify-between"><span className="font-medium">Empresa:</span> <span className="text-warm-900">{proj.client?.company || 'Não informada'}</span></div>
-                        <div className="flex justify-between"><span className="font-medium">Cargo/Contato:</span> <span className="text-warm-900">{proj.client?.contact_person || 'Não informado'} {proj.client?.contact_position ? `(${proj.client.contact_position})` : ''}</span></div>
-                        <div className="flex justify-between"><span className="font-medium">Telefone:</span> <span className="text-warm-900">{proj.client?.phone || 'Não informado'}</span></div>
-                        <div className="flex justify-between"><span className="font-medium">E-mail:</span> <a href={`mailto:${proj.client?.email}`} className="text-brand-500 hover:underline">{proj.client?.email || 'Não informado'}</a></div>
-                        <div className="flex justify-between"><span className="font-medium">CPF/CNPJ:</span> <span className="text-warm-900">{proj.client?.cpf_cnpj || 'Não informado'}</span></div>
-                      </div>
-                    </Card>
-                    <Card className="p-5 space-y-4">
-                      <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
-                        <Info size={15} />
-                        Endereço & Notas
-                      </h4>
-                      <div className="space-y-3 text-sm text-warm-600">
-                        <div>
-                          <span className="font-medium">Endereço Completo:</span>
-                          <p className="text-warm-900 mt-1">
-                            {proj.client?.address ? `${proj.client.address}, ` : ''}
-                            {proj.client?.city ? `${proj.client.city} - ` : ''}
-                            {proj.client?.state || ''}
-                            {proj.client?.zip_code ? ` (CEP: ${proj.client.zip_code})` : ''}
-                            {(!proj.client?.address && !proj.client?.city) && 'Nenhum endereço cadastrado'}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="font-medium">Observações Gerais:</span>
-                          <p className="text-warm-900 mt-1 bg-warm-200/40 p-3 rounded-lg border border-warm-300/40 italic">
-                            {proj.client?.notes || 'Nenhuma observação cadastrada.'}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
+                    {editingContact ? (
+                      /* Formulário de Edição de Contato */
+                      <>
+                        <Card className="p-5 space-y-4">
+                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                            <Users size={15} />
+                            Editar Dados de Contato
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">Nome do Cliente *</label>
+                              <input
+                                type="text"
+                                value={contactForm.name}
+                                onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                required
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">Empresa</label>
+                              <input
+                                type="text"
+                                value={contactForm.company}
+                                onChange={e => setContactForm({ ...contactForm, company: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-warm-500">Contato Principal</label>
+                                <input
+                                  type="text"
+                                  value={contactForm.contact_person}
+                                  onChange={e => setContactForm({ ...contactForm, contact_person: e.target.value })}
+                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                  placeholder="Nome"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-warm-500">Cargo</label>
+                                <input
+                                  type="text"
+                                  value={contactForm.contact_position}
+                                  onChange={e => setContactForm({ ...contactForm, contact_position: e.target.value })}
+                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                  placeholder="Cargo"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">Telefone</label>
+                              <input
+                                type="text"
+                                value={contactForm.phone}
+                                onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                placeholder="(00) 00000-0000"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">E-mail</label>
+                              <input
+                                type="email"
+                                value={contactForm.email}
+                                onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                placeholder="email@exemplo.com"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">CPF/CNPJ</label>
+                              <input
+                                type="text"
+                                value={contactForm.cpf_cnpj}
+                                onChange={e => setContactForm({ ...contactForm, cpf_cnpj: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                placeholder="00.000.000/0001-00"
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                        <Card className="p-5 space-y-4">
+                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                            <Info size={15} />
+                            Editar Endereço & Notas
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">Endereço Completo</label>
+                              <input
+                                type="text"
+                                value={contactForm.address}
+                                onChange={e => setContactForm({ ...contactForm, address: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                placeholder="Rua, Número, Bairro..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="col-span-2 flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-warm-500">Cidade</label>
+                                <input
+                                  type="text"
+                                  value={contactForm.city}
+                                  onChange={e => setContactForm({ ...contactForm, city: e.target.value })}
+                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-warm-500">UF</label>
+                                <input
+                                  type="text"
+                                  value={contactForm.state}
+                                  onChange={e => setContactForm({ ...contactForm, state: e.target.value })}
+                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                  placeholder="UF"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">CEP</label>
+                              <input
+                                type="text"
+                                value={contactForm.zip_code}
+                                onChange={e => setContactForm({ ...contactForm, zip_code: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
+                                placeholder="00000-000"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-warm-500">Observações Gerais</label>
+                              <textarea
+                                value={contactForm.notes}
+                                onChange={e => setContactForm({ ...contactForm, notes: e.target.value })}
+                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-2 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all h-24 resize-none"
+                                placeholder="Alguma nota sobre o cliente ou faturamento..."
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                      </>
+                    ) : (
+                      /* Visualização Tradicional */
+                      <>
+                        <Card className="p-5 space-y-4">
+                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                            <Users size={15} />
+                            Dados de Contato
+                          </h4>
+                          <div className="space-y-3 text-sm text-warm-600">
+                            <div className="flex justify-between"><span className="font-medium">Nome do Cliente:</span> <span className="text-warm-900 font-semibold">{proj.client?.name || 'Não informado'}</span></div>
+                            <div className="flex justify-between"><span className="font-medium">Empresa:</span> <span className="text-warm-900">{proj.client?.company || 'Não informada'}</span></div>
+                            <div className="flex justify-between"><span className="font-medium">Cargo/Contato:</span> <span className="text-warm-900">{proj.client?.contact_person || 'Não informado'} {proj.client?.contact_position ? `(${proj.client.contact_position})` : ''}</span></div>
+                            <div className="flex justify-between"><span className="font-medium">Telefone:</span> <span className="text-warm-900">{proj.client?.phone || 'Não informado'}</span></div>
+                            <div className="flex justify-between"><span className="font-medium">E-mail:</span> <a href={`mailto:${proj.client?.email}`} className="text-brand-500 hover:underline">{proj.client?.email || 'Não informado'}</a></div>
+                            <div className="flex justify-between"><span className="font-medium">CPF/CNPJ:</span> <span className="text-warm-900">{proj.client?.cpf_cnpj || 'Não informado'}</span></div>
+                          </div>
+                        </Card>
+                        <Card className="p-5 space-y-4">
+                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                            <Info size={15} />
+                            Endereço & Notas
+                          </h4>
+                          <div className="space-y-3 text-sm text-warm-600">
+                            <div>
+                              <span className="font-medium">Endereço Completo:</span>
+                              <p className="text-warm-900 mt-1">
+                                {proj.client?.address ? `${proj.client.address}, ` : ''}
+                                {proj.client?.city ? `${proj.client.city} - ` : ''}
+                                {proj.client?.state || ''}
+                                {proj.client?.zip_code ? ` (CEP: ${proj.client.zip_code})` : ''}
+                                {(!proj.client?.address && !proj.client?.city) && 'Nenhum endereço cadastrado'}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Observações Gerais:</span>
+                              <p className="text-warm-900 mt-1 bg-warm-200/40 p-3 rounded-lg border border-warm-300/40 italic">
+                                {proj.client?.notes || 'Nenhuma observação cadastrada.'}
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

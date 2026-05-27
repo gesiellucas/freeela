@@ -1,6 +1,6 @@
-﻿import React, { useState } from 'react';
-import { Plus, FileSignature, Trash2, Loader2, CheckCircle2, X, Paperclip } from 'lucide-react';
-import { createContract, updateContract, deleteContract } from '../lib/supabase';
+import React, { useState } from 'react';
+import { Plus, FileSignature, Trash2, Loader2, CheckCircle2, X, Paperclip, Pencil, Save, MapPin, Mail, Phone, Building2, User } from 'lucide-react';
+import { createContract, updateContract, deleteContract, supabase } from '../lib/supabase';
 import FileUploader from '../components/ui/FileUploader';
 
 const Badge = ({ color = 'slate', children }) => {
@@ -33,6 +33,14 @@ export default function ContratosView({
   const [form, setForm] = useState({
     title: '', project_id: '', description: '', status: 'draft',
     effective_date: '', expiry_date: '', notes: '',
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '', description: '', effective_date: '', expiry_date: '', notes: '',
+    client_name: '', client_email: '', client_phone: '', client_company: '',
+    client_address: '', client_city: '', client_state: '', client_zip_code: '',
+    client_cpf_cnpj: '', client_contact_person: '', client_contact_position: '',
   });
 
   const handleCreate = async () => {
@@ -85,6 +93,108 @@ export default function ContratosView({
     if (onContractDeleted) onContractDeleted(contract.id);
     if (selectedContract?.id === contract.id) setSelectedContract(null);
   };
+
+  const handleStartEdit = () => {
+    const client = syncedSelected.project?.client || {};
+    setEditForm({
+      title: syncedSelected.title || '',
+      description: syncedSelected.description || '',
+      effective_date: syncedSelected.effective_date || '',
+      expiry_date: syncedSelected.expiry_date || '',
+      notes: syncedSelected.notes || '',
+      client_name: client.name || '',
+      client_email: client.email || '',
+      client_phone: client.phone || '',
+      client_company: client.company || '',
+      client_address: client.address || '',
+      client_city: client.city || '',
+      client_state: client.state || '',
+      client_zip_code: client.zip_code || '',
+      client_cpf_cnpj: client.cpf_cnpj || '',
+      client_contact_person: client.contact_person || '',
+      client_contact_position: client.contact_position || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm.title) return;
+    setSaving(true);
+    try {
+      // 1. Update contract
+      const { error: contractError } = await updateContract(syncedSelected.id, {
+        title: editForm.title,
+        description: editForm.description || null,
+        effective_date: editForm.effective_date || null,
+        expiry_date: editForm.expiry_date || null,
+        notes: editForm.notes || null,
+      });
+      if (contractError) throw contractError;
+
+      // 2. Update client if exists
+      const clientId = syncedSelected.project?.client_id || syncedSelected.project?.client?.id;
+      if (clientId) {
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({
+            name: editForm.client_name,
+            email: editForm.client_email,
+            phone: editForm.client_phone || null,
+            company: editForm.client_company || null,
+            address: editForm.client_address || null,
+            city: editForm.client_city || null,
+            state: editForm.client_state || null,
+            zip_code: editForm.client_zip_code || null,
+            cpf_cnpj: editForm.client_cpf_cnpj || null,
+            contact_person: editForm.client_contact_person || null,
+            contact_position: editForm.client_contact_position || null,
+          })
+          .eq('id', clientId);
+        if (clientError) throw clientError;
+      }
+
+      // 3. Local update object
+      const updatedContract = {
+        ...syncedSelected,
+        title: editForm.title,
+        description: editForm.description || null,
+        effective_date: editForm.effective_date || null,
+        expiry_date: editForm.expiry_date || null,
+        notes: editForm.notes || null,
+        project: {
+          ...syncedSelected.project,
+          client: {
+            ...(syncedSelected.project?.client || {}),
+            name: editForm.client_name,
+            email: editForm.client_email,
+            phone: editForm.client_phone || null,
+            company: editForm.client_company || null,
+            address: editForm.client_address || null,
+            city: editForm.client_city || null,
+            state: editForm.client_state || null,
+            zip_code: editForm.client_zip_code || null,
+            cpf_cnpj: editForm.client_cpf_cnpj || null,
+            contact_person: editForm.client_contact_person || null,
+            contact_position: editForm.client_contact_position || null,
+          }
+        }
+      };
+
+      if (onContractUpdated) {
+        onContractUpdated(updatedContract);
+      }
+      setSelectedContract(updatedContract);
+      setIsEditing(false);
+    } catch (err) {
+      alert('Erro ao salvar edições: ' + (err.message || err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  React.useEffect(() => {
+    setIsEditing(false);
+  }, [selectedContract?.id]);
 
   // Sincronizar selectedContract quando contracts muda externamente (ex: file added)
   const syncedSelected = selectedContract
@@ -183,67 +293,344 @@ export default function ContratosView({
           {/* Painel de detalhes + arquivos */}
           {syncedSelected && (
             <div className="lg:col-span-3 space-y-4">
-              {/* Card de informações do contrato */}
-              <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1 min-w-0 mr-3">
-                    <h3 className="font-black text-base truncate">{syncedSelected.title}</h3>
-                    <p className="text-xs text-warm-500 mt-0.5">
-                      {syncedSelected.project?.title || 'Projeto'} · {syncedSelected.project?.client?.name || ''}
-                    </p>
+              {isEditing ? (
+                /* Card de edição das informações do contrato e cliente */
+                <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-warm-200/60 pb-3">
+                    <div>
+                      <h3 className="font-black text-base flex items-center gap-1.5">
+                        <FileSignature size={18} className="text-blue-500" />
+                        Editar Contrato
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="px-3 py-1.5 border border-warm-400 text-warm-500 hover:bg-warm-200/50 rounded-xl text-xs font-bold transition-all"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={saving || !editForm.title}
+                        className="px-3 py-1.5 bg-blue-600 text-warm-900 hover:bg-blue-700 disabled:opacity-50 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+                      >
+                        {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                        Salvar
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedContract(null)}
-                    className="p-1.5 hover:bg-warm-200/60  rounded-lg flex-shrink-0"
-                  >
-                    <X size={16} className="text-warm-500" />
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Status</p>
-                    <select
-                      value={syncedSelected.status}
-                      onChange={e => handleStatusChange(syncedSelected, e.target.value)}
-                      className="w-full bg-warm-200/60  border-none rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer"
-                    >
-                      {['draft', 'sent', 'signed', 'cancelled'].map(s => (
-                        <option key={s} value={s}>{statusLabel(s)}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Início</p>
-                    <p className="text-xs font-medium text-warm-800 py-1.5">
-                      {syncedSelected.effective_date
-                        ? new Date(syncedSelected.effective_date + 'T00:00:00').toLocaleDateString('pt-BR')
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Validade</p>
-                    <p className="text-xs font-medium text-warm-800 py-1.5">
-                      {syncedSelected.expiry_date
-                        ? new Date(syncedSelected.expiry_date + 'T00:00:00').toLocaleDateString('pt-BR')
-                        : '—'}
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[60vh] overflow-y-auto pr-1">
+                    {/* Coluna 1: Dados do Contrato */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black uppercase text-warm-500 border-b border-warm-200 pb-1 flex items-center gap-1">
+                        <FileSignature size={12} className="text-blue-500" />
+                        Informações do Contrato
+                      </h4>
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Título do Contrato *</label>
+                        <input
+                          type="text"
+                          value={editForm.title}
+                          onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                          className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                          placeholder="Ex: Contrato de Prestação de Serviços"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Data Início</label>
+                          <input
+                            type="date"
+                            value={editForm.effective_date}
+                            onChange={e => setEditForm({ ...editForm, effective_date: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Validade</label>
+                          <input
+                            type="date"
+                            value={editForm.expiry_date}
+                            onChange={e => setEditForm({ ...editForm, expiry_date: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Descrição</label>
+                        <textarea
+                          value={editForm.description}
+                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                          className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 h-20 resize-none text-warm-900"
+                          placeholder="Breve descrição do escopo..."
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Observações</label>
+                        <textarea
+                          value={editForm.notes}
+                          onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                          className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 h-20 resize-none text-warm-900"
+                          placeholder="Notas adicionais sobre o contrato..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Coluna 2: Dados do Cliente */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black uppercase text-warm-500 border-b border-warm-200 pb-1 flex items-center gap-1">
+                        <User size={12} className="text-blue-500" />
+                        Contato & Endereço
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="col-span-2">
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Nome do Cliente *</label>
+                          <input
+                            type="text"
+                            value={editForm.client_name}
+                            onChange={e => setEditForm({ ...editForm, client_name: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="Nome do cliente"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Empresa</label>
+                          <input
+                            type="text"
+                            value={editForm.client_company}
+                            onChange={e => setEditForm({ ...editForm, client_company: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="Empresa Ltda"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">CPF/CNPJ</label>
+                          <input
+                            type="text"
+                            value={editForm.client_cpf_cnpj}
+                            onChange={e => setEditForm({ ...editForm, client_cpf_cnpj: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="00.000.000/0001-00"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">E-mail</label>
+                          <input
+                            type="email"
+                            value={editForm.client_email}
+                            onChange={e => setEditForm({ ...editForm, client_email: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="email@empresa.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Telefone</label>
+                          <input
+                            type="text"
+                            value={editForm.client_phone}
+                            onChange={e => setEditForm({ ...editForm, client_phone: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Pessoa de Contato</label>
+                          <input
+                            type="text"
+                            value={editForm.client_contact_person}
+                            onChange={e => setEditForm({ ...editForm, client_contact_person: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="Ex: Responsável"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Cargo do Contato</label>
+                          <input
+                            type="text"
+                            value={editForm.client_contact_position}
+                            onChange={e => setEditForm({ ...editForm, client_contact_position: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="Ex: Diretor"
+                          />
+                        </div>
+                      </div>
+
+                      <h4 className="text-[10px] font-black uppercase text-warm-500 border-b border-warm-200 pb-1 pt-2 flex items-center gap-1">
+                        <MapPin size={12} className="text-blue-500" />
+                        Endereço de Faturamento
+                      </h4>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Logradouro / Endereço</label>
+                          <input
+                            type="text"
+                            value={editForm.client_address}
+                            onChange={e => setEditForm({ ...editForm, client_address: e.target.value })}
+                            className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                            placeholder="Rua, Número, Bairro..."
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5">
+                          <div className="col-span-2">
+                            <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Cidade</label>
+                            <input
+                              type="text"
+                              value={editForm.client_city}
+                              onChange={e => setEditForm({ ...editForm, client_city: e.target.value })}
+                              className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                              placeholder="Cidade"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">UF</label>
+                            <input
+                              type="text"
+                              value={editForm.client_state}
+                              onChange={e => setEditForm({ ...editForm, client_state: e.target.value })}
+                              className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                              placeholder="UF"
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">CEP</label>
+                            <input
+                              type="text"
+                              value={editForm.client_zip_code}
+                              onChange={e => setEditForm({ ...editForm, client_zip_code: e.target.value })}
+                              className="w-full bg-warm-200/60 border-none rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 text-warm-900"
+                              placeholder="00000-000"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                /* Card original de visualização de informações do contrato */
+                <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <h3 className="font-black text-base truncate">{syncedSelected.title}</h3>
+                      <p className="text-xs text-warm-500 mt-0.5">
+                        {syncedSelected.project?.title || 'Projeto'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={handleStartEdit}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-blue-500/10"
+                        title="Editar contrato"
+                      >
+                        <Pencil size={12} />
+                        Editar Contrato
+                      </button>
+                      <button
+                        onClick={() => setSelectedContract(null)}
+                        className="p-1.5 hover:bg-warm-200/60 rounded-lg text-warm-600 hover:text-warm-900 transition-colors"
+                      >
+                        <X size={16} className="text-warm-500" />
+                      </button>
+                    </div>
+                  </div>
 
-                {syncedSelected.signed_at && (
-                  <p className="text-xs text-green-600 font-bold mb-3 flex items-center gap-1">
-                    <CheckCircle2 size={12} />
-                    Assinado em: {new Date(syncedSelected.signed_at).toLocaleDateString('pt-BR')}
-                  </p>
-                )}
-                {syncedSelected.description && (
-                  <p className="text-xs text-warm-500 dark:text-warm-500 mb-2">{syncedSelected.description}</p>
-                )}
-                {syncedSelected.notes && (
-                  <p className="text-xs text-warm-500 italic">{syncedSelected.notes}</p>
-                )}
-              </div>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Status</p>
+                      <select
+                        value={syncedSelected.status}
+                        onChange={e => handleStatusChange(syncedSelected, e.target.value)}
+                        className="w-full bg-warm-200/60 border-none rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer"
+                      >
+                        {['draft', 'sent', 'signed', 'cancelled'].map(s => (
+                          <option key={s} value={s}>{statusLabel(s)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Início</p>
+                      <p className="text-xs font-medium text-warm-800 py-1.5">
+                        {syncedSelected.effective_date
+                          ? new Date(syncedSelected.effective_date + 'T00:00:00').toLocaleDateString('pt-BR')
+                          : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-warm-500 mb-1">Validade</p>
+                      <p className="text-xs font-medium text-warm-800 py-1.5">
+                        {syncedSelected.expiry_date
+                          ? new Date(syncedSelected.expiry_date + 'T00:00:00').toLocaleDateString('pt-BR')
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {syncedSelected.signed_at && (
+                    <p className="text-xs text-green-600 font-bold mb-3 flex items-center gap-1">
+                      <CheckCircle2 size={12} />
+                      Assinado em: {new Date(syncedSelected.signed_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                  {syncedSelected.description && (
+                    <p className="text-xs text-warm-500 dark:text-warm-500 mb-2">{syncedSelected.description}</p>
+                  )}
+                  {syncedSelected.notes && (
+                    <p className="text-xs text-warm-500 italic mb-2">{syncedSelected.notes}</p>
+                  )}
+
+                  {/* Detalhes do Cliente */}
+                  <div className="border-t border-warm-200/60 pt-4 mt-4 space-y-4">
+                    <div>
+                      <h4 className="text-xs font-black uppercase text-warm-500 mb-2.5 flex items-center gap-1.5">
+                        <User size={13} className="text-blue-500" />
+                        Informações do Cliente
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-warm-700">
+                        <div>
+                          <span className="font-bold text-warm-500">Nome:</span> {syncedSelected.project?.client?.name || '—'}
+                        </div>
+                        <div>
+                          <span className="font-bold text-warm-500">Empresa:</span> {syncedSelected.project?.client?.company || '—'}
+                        </div>
+                        <div className="col-span-2">
+                          <span className="font-bold text-warm-500">Contato:</span> {syncedSelected.project?.client?.contact_person || '—'} {syncedSelected.project?.client?.contact_position ? ` (${syncedSelected.project.client.contact_position})` : ''}
+                        </div>
+                        <div>
+                          <span className="font-bold text-warm-500">E-mail:</span> {syncedSelected.project?.client?.email || '—'}
+                        </div>
+                        <div>
+                          <span className="font-bold text-warm-500">Telefone:</span> {syncedSelected.project?.client?.phone || '—'}
+                        </div>
+                        <div>
+                          <span className="font-bold text-warm-500">CPF/CNPJ:</span> {syncedSelected.project?.client?.cpf_cnpj || '—'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-black uppercase text-warm-500 mb-2.5 flex items-center gap-1.5">
+                        <MapPin size={13} className="text-blue-500" />
+                        Endereço de Faturamento
+                      </h4>
+                      <div className="text-xs text-warm-700 space-y-1">
+                        <p><span className="font-bold text-warm-500">Endereço:</span> {syncedSelected.project?.client?.address || '—'}</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="col-span-2">
+                            <span className="font-bold text-warm-500">Cidade/UF:</span> {syncedSelected.project?.client?.city ? `${syncedSelected.project.client.city} - ${syncedSelected.project.client.state || ''}` : '—'}
+                          </div>
+                          <div>
+                            <span className="font-bold text-warm-500">CEP:</span> {syncedSelected.project?.client?.zip_code || '—'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Card de arquivos — estilo checklist */}
               <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5">

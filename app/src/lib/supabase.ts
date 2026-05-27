@@ -444,7 +444,7 @@ export async function deleteProposal(proposalId: string) {
 export async function getContracts(userId: string) {
   return supabase
     .from('contracts')
-    .select('*, project:projects(id, title, client:clients(name)), media_files(*)')
+    .select('*, project:projects(id, title, client:clients(*)), media_files(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 }
