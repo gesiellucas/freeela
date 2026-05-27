@@ -219,6 +219,7 @@ CREATE TABLE tasks (
   -- Status e Tipo
   status task_status DEFAULT 'todo',
   task_type task_type DEFAULT 'technical',
+  complexity TEXT,
 
   -- Prioridade e Organização
   priority INTEGER DEFAULT 0,
@@ -465,7 +466,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER log_project_workflow_change
   AFTER UPDATE ON projects

@@ -197,7 +197,7 @@ export async function getProjects(
 export async function getProjectById(projectId: string) {
   return supabase
     .from('projects')
-    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*)')
+    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*)')
     .eq('id', projectId)
     .single()
 }

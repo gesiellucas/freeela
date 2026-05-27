@@ -1,10 +1,12 @@
-﻿import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Briefcase, X, Users, CreditCard, FolderOpen,
   CheckCircle2, ChevronDown, ChevronRight, Calendar, ShieldCheck,
   DollarSign, Archive, ArrowRight, Plus, Trash2, Pencil,
   ChevronUp, Minus, ArrowDown, Check, Square, CheckSquare,
+  FileText, FileSignature, Receipt, UploadCloud, Download, ExternalLink,
 } from 'lucide-react';
+import { supabase, uploadFile } from '../lib/supabase';
 
 const WORKFLOW_STEPS = [
   { id: 1, label: 'Contato',      key: 'initial_contact', icon: <Users size={14} />,       desc: 'Registro do lead e e-mail de boas-vindas' },
@@ -224,9 +226,1305 @@ function InlineAdd({ onAdd, placeholder = 'Nome do checklist...' }) {
 }
 
 
+// ── Demand Step Component ──
+function DemandStepForm({ proj, onUpdateProject }) {
+  const [editing, setEditing] = useState(false);
+  const [description, setDescription] = useState(proj.description || '');
+  const [value, setValue] = useState(proj.value || 0);
+  const [deadline, setDeadline] = useState(proj.deadline || '');
+  const [startDate, setStartDate] = useState(proj.start_date || '');
+  const [completionDate, setCompletionDate] = useState(proj.completion_date || '');
+  const [technologies, setTechnologies] = useState(proj.metadata?.technologies || '');
+  const [expertise, setExpertise] = useState(proj.metadata?.expertise || 'Pleno');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    if (onUpdateProject) {
+      await onUpdateProject(proj.id, {
+        description,
+        value: parseFloat(value) || 0,
+        deadline: deadline || null,
+        start_date: startDate || null,
+        completion_date: completionDate || null,
+        metadata: {
+          ...proj.metadata,
+          technologies,
+          expertise
+        }
+      });
+    }
+    setSaving(false);
+    setEditing(false);
+  };
+
+  return (
+    <Card className="p-6 space-y-6">
+      <div className="flex items-center justify-between border-b border-warm-300 pb-3">
+        <h3 className="font-semibold text-lg text-warm-900 flex items-center gap-2">
+          <Calendar size={18} className="text-brand-500" />
+          Especificações da Demanda
+        </h3>
+        {!editing ? (
+          <Button variant="secondary" onClick={() => setEditing(true)}>Editar Detalhes</Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setEditing(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleSave} loading={saving}>Salvar</Button>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">O que deve ser feito (Briefing)</label>
+            {editing ? (
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all h-28 resize-none"
+              />
+            ) : (
+              <p className="text-warm-850 bg-warm-200/35 p-3 rounded-xl border border-warm-300/30 min-h-[112px] whitespace-pre-wrap">{description || 'Sem descrição.'}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Valor (R$)</label>
+              {editing ? (
+                <input
+                  type="number"
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2 focus:outline-none"
+                />
+              ) : (
+                <p className="text-warm-900 font-semibold font-mono text-base mt-1">R$ {value.toLocaleString('pt-BR')}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Prazo Final (Deadline)</label>
+              {editing ? (
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={e => setDeadline(e.target.value)}
+                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2 focus:outline-none"
+                />
+              ) : (
+                <p className="text-warm-900 font-medium mt-1">{deadline ? new Date(deadline).toLocaleDateString('pt-BR') : 'Não definido'}</p>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Data de Início</label>
+              {editing ? (
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2 focus:outline-none"
+                />
+              ) : (
+                <p className="text-warm-900 font-medium mt-1">{startDate ? new Date(startDate).toLocaleDateString('pt-BR') : 'Não definido'}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Data de Conclusão</label>
+              {editing ? (
+                <input
+                  type="date"
+                  value={completionDate}
+                  onChange={e => setCompletionDate(e.target.value)}
+                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2 focus:outline-none"
+                />
+              ) : (
+                <p className="text-warm-900 font-medium mt-1">{completionDate ? new Date(completionDate).toLocaleDateString('pt-BR') : 'Não definido'}</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Tecnologias Utilizadas</label>
+            {editing ? (
+              <input
+                type="text"
+                placeholder="Ex: React, Node.js, PostgreSQL (separados por vírgula)"
+                value={technologies}
+                onChange={e => setTechnologies(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            ) : (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {technologies ? (
+                  technologies.split(',').map((t, idx) => (
+                    <Badge key={idx} color="blue">{t.trim()}</Badge>
+                  ))
+                ) : (
+                  <span className="text-warm-500">Nenhuma tecnologia especificada.</span>
+                )}
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Expertise Exigida</label>
+            {editing ? (
+              <select
+                value={expertise}
+                onChange={e => setExpertise(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-2 focus:outline-none"
+              >
+                <option value="Júnior">Júnior</option>
+                <option value="Pleno">Pleno</option>
+                <option value="Sênior">Sênior</option>
+                <option value="Especialista">Especialista</option>
+              </select>
+            ) : (
+              <p className="text-warm-900 font-semibold mt-1">{expertise}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Commercial (Proposal & Contract) Step Manager Component ──
+function CommercialStepManager({ type, proj, currentUser, refreshProject }) {
+  const isProposal = type === 'proposal';
+  const title = isProposal ? 'Proposta' : 'Contrato';
+  const statusOptions = isProposal
+    ? [
+        { value: 'draft', label: 'A Enviar' },
+        { value: 'sent', label: 'Aguardando' },
+        { value: 'accepted', label: 'Aceito' },
+        { value: 'declined', label: 'Declinado' },
+      ]
+    : [
+        { value: 'draft', label: 'Rascunho' },
+        { value: 'sent', label: 'Enviado' },
+        { value: 'signed', label: 'Assinado' },
+        { value: 'cancelled', label: 'Cancelado' },
+      ];
+
+  const items = isProposal ? (proj.proposals || []) : (proj.contracts || []);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newStatus, setNewStatus] = useState('draft');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !currentUser) return;
+    setSaving(true);
+    try {
+      const payload = {
+        user_id: proj.user_id,
+        project_id: proj.id,
+        title: newTitle.trim(),
+        description: newDesc.trim(),
+        status: newStatus,
+      };
+
+      let res;
+      if (isProposal) {
+        res = await supabase.from('proposals').insert(payload).select().single();
+      } else {
+        res = await supabase.from('contracts').insert(payload).select().single();
+      }
+
+      if (res.error) throw res.error;
+      const createdItem = res.data;
+
+      // Handle file upload if selected
+      if (selectedFile && createdItem) {
+        const folderName = isProposal ? 'proposals' : 'contracts';
+        const uploadRes = await uploadFile(currentUser.id, folderName, createdItem.id, selectedFile);
+        if (uploadRes.error) throw uploadRes.error;
+
+        if (uploadRes.data) {
+          // Link media file to the created entity
+          const mediaPayload = {
+            user_id: proj.user_id,
+            file_name: selectedFile.name,
+            file_path: uploadRes.data.path,
+            file_url: uploadRes.data.url,
+            mime_type: selectedFile.type,
+            file_size: selectedFile.size,
+            description: `Documento de ${title}`,
+          };
+          if (isProposal) {
+            mediaPayload.proposal_id = createdItem.id;
+          } else {
+            mediaPayload.contract_id = createdItem.id;
+          }
+          const mediaRes = await supabase.from('media_files').insert(mediaPayload);
+          if (mediaRes.error) throw mediaRes.error;
+        }
+      }
+
+      setFormOpen(false);
+      setNewTitle('');
+      setNewDesc('');
+      setNewStatus('draft');
+      setSelectedFile(null);
+      await refreshProject();
+    } catch (err) {
+      console.error(`Erro ao criar ${title}:`, err);
+      alert(`Erro ao criar ${title}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (itemId, val) => {
+    try {
+      const table = isProposal ? 'proposals' : 'contracts';
+      const { error } = await supabase.from(table).update({ status: val }).eq('id', itemId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao atualizar status:', err);
+    }
+  };
+
+  const handleDelete = async (itemId) => {
+    if (!window.confirm('Tem certeza que deseja excluir?')) return;
+    try {
+      const table = isProposal ? 'proposals' : 'contracts';
+      const { error } = await supabase.from(table).delete().eq('id', itemId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao deletar:', err);
+    }
+  };
+
+  const getStatusBadge = (st) => {
+    const maps = {
+      draft:     { color: 'slate',  label: isProposal ? 'A Enviar' : 'Rascunho' },
+      sent:      { color: 'yellow', label: isProposal ? 'Aguardando' : 'Enviado' },
+      accepted:  { color: 'green',  label: 'Aceito' },
+      signed:    { color: 'green',  label: 'Assinado' },
+      declined:  { color: 'red',    label: 'Declinado' },
+      cancelled: { color: 'red',    label: 'Cancelado' },
+    };
+    const c = maps[st] || { color: 'slate', label: st };
+    return <Badge color={c.color}>{c.label}</Badge>;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-warm-300 pb-3">
+        <h3 className="font-semibold text-lg text-warm-900 flex items-center gap-2">
+          {isProposal ? <ShieldCheck size={20} className="text-brand-500" /> : <CheckCircle2 size={20} className="text-brand-500" />}
+          Lista de {title}s
+        </h3>
+        <Button variant={formOpen ? 'outline' : 'primary'} onClick={() => setFormOpen(!formOpen)}>
+          {formOpen ? 'Cancelar' : `Nova ${title}`}
+        </Button>
+      </div>
+
+      {formOpen && (
+        <Card className="p-5">
+          <form onSubmit={handleCreate} className="space-y-4">
+            <h4 className="font-semibold text-sm text-warm-800 font-sans">Criar Nova {title}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Título</label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-2 text-sm focus:outline-none"
+                  placeholder={`Ex: ${title} do Escopo`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Status Inicial</label>
+                <select
+                  value={newStatus}
+                  onChange={e => setNewStatus(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                >
+                  {statusOptions.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Descrição / Notas</label>
+              <textarea
+                value={newDesc}
+                onChange={e => setNewDesc(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2 text-sm focus:outline-none h-20 resize-none"
+                placeholder="Insira detalhes e anotações pertinentes..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Anexar Documento (PDF, DOCX, TXT)</label>
+              <input
+                type="file"
+                accept=".pdf,.docx,.doc,.txt"
+                onChange={e => setSelectedFile(e.target.files[0] || null)}
+                className="w-full text-xs text-warm-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-warm-200 file:text-warm-850 hover:file:bg-warm-300"
+              />
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" loading={saving}>Criar {title}</Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        {items.length === 0 && (
+          <div className="text-center py-8 text-warm-500 bg-warm-50 rounded-2xl border border-warm-300/40">
+            Nenhum(a) {title.toLowerCase()} registrado(a).
+          </div>
+        )}
+        {items.map(item => {
+          const files = proj.media_files?.filter(f => isProposal ? f.proposal_id === item.id : f.contract_id === item.id) || [];
+          return (
+            <Card key={item.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <h4 className="font-semibold text-sm text-warm-900">{item.title}</h4>
+                  {getStatusBadge(item.status)}
+                </div>
+                {item.description && <p className="text-xs text-warm-500">{item.description}</p>}
+                {files.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {files.map(f => (
+                      <a
+                        key={f.id}
+                        href={f.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline bg-brand-50 px-2 py-1 rounded"
+                      >
+                        <Download size={11} />
+                        {f.file_name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={item.status}
+                  onChange={e => handleStatusChange(item.id, e.target.value)}
+                  className="bg-warm-200 border border-warm-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                >
+                  {statusOptions.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-warm-500 hover:text-red-500">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Dev (Development planning) Step Manager Component ──
+function DevStepManager({ proj, refreshProject }) {
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [newTaskDate, setNewTaskDate] = useState('');
+  const [newTaskComplexity, setNewTaskComplexity] = useState('Média');
+  const [savingTask, setSavingTask] = useState(false);
+
+  // States to add checklist
+  const [checklistFormTaskId, setChecklistFormTaskId] = useState(null);
+  const [newChecklistTitle, setNewChecklistTitle] = useState('');
+  const [newChecklistDesc, setNewChecklistDesc] = useState('');
+  const [newChecklistPriority, setNewChecklistPriority] = useState('normal');
+  const [newChecklistStatus, setNewChecklistStatus] = useState('todo');
+  const [newChecklistComplexity, setNewChecklistComplexity] = useState('Média');
+  const [newChecklistDate, setNewChecklistDate] = useState('');
+  const [savingChecklist, setSavingChecklist] = useState(false);
+
+  // States to add point
+  const [newPointTitle, setNewPointTitle] = useState({});
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+    setSavingTask(true);
+    try {
+      const { error } = await supabase.from('tasks').insert({
+        project_id: proj.id,
+        user_id: proj.user_id,
+        title: newTaskTitle.trim(),
+        description: newTaskDesc.trim(),
+        due_date: newTaskDate || null,
+        complexity: newTaskComplexity,
+        status: 'todo',
+        task_type: 'technical'
+      });
+      if (error) throw error;
+      setTaskFormOpen(false);
+      setNewTaskTitle('');
+      setNewTaskDesc('');
+      setNewTaskDate('');
+      setNewTaskComplexity('Média');
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao criar tarefa:', err);
+      alert('Erro ao criar tarefa');
+    } finally {
+      setSavingTask(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Excluir tarefa e todos os seus checklists?')) return;
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao deletar tarefa:', err);
+    }
+  };
+
+  const handleCreateChecklist = async (e, taskId) => {
+    e.preventDefault();
+    if (!newChecklistTitle.trim()) return;
+    setSavingChecklist(true);
+    try {
+      const { error } = await supabase.from('checklists').insert({
+        project_id: proj.id,
+        user_id: proj.user_id,
+        task_id: taskId,
+        title: newChecklistTitle.trim(),
+        description: newChecklistDesc.trim(),
+        priority: newChecklistPriority,
+        status: newChecklistStatus,
+        complexity: newChecklistComplexity,
+        due_date: newChecklistDate || null,
+      });
+      if (error) throw error;
+      setChecklistFormTaskId(null);
+      setNewChecklistTitle('');
+      setNewChecklistDesc('');
+      setNewChecklistPriority('normal');
+      setNewChecklistStatus('todo');
+      setNewChecklistComplexity('Média');
+      setNewChecklistDate('');
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao criar checklist:', err);
+    } finally {
+      setSavingChecklist(false);
+    }
+  };
+
+  const handleDeleteChecklist = async (clId) => {
+    if (!window.confirm('Excluir este checklist?')) return;
+    try {
+      const { error } = await supabase.from('checklists').delete().eq('id', clId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao deletar checklist:', err);
+    }
+  };
+
+  const handleAddPoint = async (clId) => {
+    const title = newPointTitle[clId];
+    if (!title || !title.trim()) return;
+    try {
+      const { error } = await supabase.from('checklist_items').insert({
+        checklist_id: clId,
+        title: title.trim(),
+        completed: false
+      });
+      if (error) throw error;
+      setNewPointTitle({ ...newPointTitle, [clId]: '' });
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao criar ponto:', err);
+    }
+  };
+
+  const handleTogglePoint = async (pointId, completed) => {
+    try {
+      const { error } = await supabase.from('checklist_items').update({ completed }).eq('id', pointId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao alternar ponto:', err);
+    }
+  };
+
+  const handleDeletePoint = async (pointId) => {
+    try {
+      const { error } = await supabase.from('checklist_items').delete().eq('id', pointId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao excluir ponto:', err);
+    }
+  };
+
+  const handleChecklistFieldChange = async (clId, field, value) => {
+    try {
+      const { error } = await supabase.from('checklists').update({ [field]: value }).eq('id', clId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao atualizar checklist:', err);
+    }
+  };
+
+  const handleTaskFieldChange = async (taskId, field, value) => {
+    try {
+      const { error } = await supabase.from('tasks').update({ [field]: value }).eq('id', taskId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao atualizar tarefa:', err);
+    }
+  };
+
+  const tasks = proj.tasks || [];
+  const checklists = proj.checklists || [];
+
+  return (
+    <div className="space-y-6 font-sans">
+      <div className="flex items-center justify-between border-b border-warm-300 pb-3">
+        <h3 className="font-semibold text-lg text-warm-900 flex items-center gap-2">
+          <Briefcase size={20} className="text-brand-500" />
+          Planejamento de Desenvolvimento
+        </h3>
+        <Button variant={taskFormOpen ? 'outline' : 'primary'} onClick={() => setTaskFormOpen(!taskFormOpen)}>
+          {taskFormOpen ? 'Cancelar' : 'Nova Tarefa'}
+        </Button>
+      </div>
+
+      {taskFormOpen && (
+        <Card className="p-5">
+          <form onSubmit={handleCreateTask} className="space-y-4">
+            <h4 className="font-semibold text-sm text-warm-850">Nova Tarefa</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Nome / Título da Tarefa</label>
+                <input
+                  type="text"
+                  required
+                  value={newTaskTitle}
+                  onChange={e => setNewTaskTitle(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-2 text-sm focus:outline-none"
+                  placeholder="Ex: Criar painel administrativo"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Complexidade</label>
+                <select
+                  value={newTaskComplexity}
+                  onChange={e => setNewTaskComplexity(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                >
+                  <option value="Baixa">Baixa</option>
+                  <option value="Média">Média</option>
+                  <option value="Alta">Alta</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Descrição</label>
+                <input
+                  type="text"
+                  value={newTaskDesc}
+                  onChange={e => setNewTaskDesc(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-2 text-sm focus:outline-none"
+                  placeholder="Descrição breve da tarefa"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Prazo (Data)</label>
+                <input
+                  type="date"
+                  value={newTaskDate}
+                  onChange={e => setNewTaskDate(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" loading={savingTask}>Adicionar Tarefa</Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      <div className="space-y-6">
+        {tasks.length === 0 && (
+          <div className="text-center py-10 text-warm-500 bg-warm-50 rounded-2xl border border-warm-300/40">
+            Nenhuma tarefa cadastrada.
+          </div>
+        )}
+        {tasks.map(task => {
+          const taskChecklists = checklists.filter(c => c.task_id === task.id);
+          return (
+            <Card key={task.id} className="p-6 border-l-4 border-l-brand-500 space-y-4">
+              {/* Task Header */}
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-warm-200 pb-3">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-base text-warm-900">{task.title}</h4>
+                  {task.description && <p className="text-xs text-warm-500">{task.description}</p>}
+                  <div className="flex items-center gap-3 text-[11px] text-warm-500 pt-1">
+                    {task.due_date && (
+                      <span className="flex items-center gap-1 font-mono">
+                        <Calendar size={12} />
+                        Prazo: {new Date(task.due_date).toLocaleDateString('pt-BR')}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      Complexidade: 
+                      <span className={`font-semibold ml-0.5 ${task.complexity === 'Alta' ? 'text-red-600' : task.complexity === 'Média' ? 'text-amber-600' : 'text-blue-600'}`}>
+                        {task.complexity || 'Média'}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={task.complexity || 'Média'}
+                    onChange={e => handleTaskFieldChange(task.id, 'complexity', e.target.value)}
+                    className="bg-warm-200 border border-warm-300 rounded px-2 py-1 text-xs focus:outline-none"
+                  >
+                    <option value="Baixa">Baixa</option>
+                    <option value="Média">Média</option>
+                    <option value="Alta">Alta</option>
+                  </select>
+                  <Button variant="ghost" className="p-1 px-2.5 text-xs text-brand-600 hover:bg-brand-50" onClick={() => setChecklistFormTaskId(task.id)}>
+                    + Checklist
+                  </Button>
+                  <button onClick={() => handleDeleteTask(task.id)} className="p-1.5 hover:bg-red-50 rounded text-warm-500 hover:text-red-500">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Checklist Form for this Task */}
+              {checklistFormTaskId === task.id && (
+                <div className="bg-warm-100 p-4 rounded-xl border border-warm-300 space-y-3">
+                  <h5 className="font-semibold text-xs text-warm-700">Novo Checklist para a Tarefa</h5>
+                  <form onSubmit={e => handleCreateChecklist(e, task.id)} className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Título do Checklist (Descrição)</label>
+                        <input
+                          type="text"
+                          required
+                          value={newChecklistTitle}
+                          onChange={e => setNewChecklistTitle(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none"
+                          placeholder="Ex: Checklist Front-end"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Complexidade</label>
+                        <select
+                          value={newChecklistComplexity}
+                          onChange={e => setNewChecklistComplexity(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                        >
+                          <option value="Baixa">Baixa</option>
+                          <option value="Média">Média</option>
+                          <option value="Alta">Alta</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Status</label>
+                        <select
+                          value={newChecklistStatus}
+                          onChange={e => setNewChecklistStatus(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                        >
+                          <option value="todo">A Fazer</option>
+                          <option value="doing">Em Progresso</option>
+                          <option value="waiting">Aguardando</option>
+                          <option value="done">Concluído</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Prioridade</label>
+                        <select
+                          value={newChecklistPriority}
+                          onChange={e => setNewChecklistPriority(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                        >
+                          <option value="alta">Alta</option>
+                          <option value="normal">Normal</option>
+                          <option value="baixa">Baixa</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Data (Entrega)</label>
+                        <input
+                          type="date"
+                          value={newChecklistDate}
+                          onChange={e => setNewChecklistDate(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 text-xs pt-1">
+                      <button type="button" onClick={() => setChecklistFormTaskId(null)} className="px-3 py-1.5 text-warm-500">Cancelar</button>
+                      <button type="submit" disabled={savingChecklist} className="bg-brand-500 text-warm-900 px-3 py-1.5 rounded-lg font-semibold hover:bg-brand-400">Criar Checklist</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Checklists rendering */}
+              <div className="space-y-4">
+                {taskChecklists.map(cl => {
+                  const points = cl.checklist_items || [];
+                  const donePoints = points.filter(p => p.completed).length;
+                  const pct = points.length ? Math.round((donePoints / points.length) * 100) : 0;
+                  return (
+                    <Card key={cl.id} className="p-4 bg-warm-200/30 border border-warm-300/40 space-y-3">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-warm-200/50 pb-2">
+                        <div className="space-y-1">
+                          <h5 className="font-semibold text-sm text-warm-800">{cl.title}</h5>
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] text-warm-500">
+                            {cl.due_date && (
+                              <span className="font-mono">Entrega: {new Date(cl.due_date).toLocaleDateString('pt-BR')}</span>
+                            )}
+                            <span>|</span>
+                            <span>
+                              Complexidade: 
+                              <span className={`font-semibold ml-0.5 ${cl.complexity === 'Alta' ? 'text-red-500' : cl.complexity === 'Média' ? 'text-amber-500' : 'text-blue-500'}`}>
+                                {cl.complexity || 'Média'}
+                              </span>
+                            </span>
+                            {points.length > 0 && (
+                              <>
+                                <span>|</span>
+                                <span className="font-mono text-emerald-600 font-bold">{donePoints}/{points.length} ({pct}%)</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={cl.status}
+                            onChange={e => handleChecklistFieldChange(cl.id, 'status', e.target.value)}
+                            className="bg-warm-50 border border-warm-300 rounded px-1.5 py-0.5 text-[10px] focus:outline-none"
+                          >
+                            <option value="todo">A Fazer</option>
+                            <option value="doing">Em Progresso</option>
+                            <option value="waiting">Aguardando</option>
+                            <option value="done">Concluído</option>
+                          </select>
+                          <select
+                            value={cl.complexity || 'Média'}
+                            onChange={e => handleChecklistFieldChange(cl.id, 'complexity', e.target.value)}
+                            className="bg-warm-50 border border-warm-300 rounded px-1.5 py-0.5 text-[10px] focus:outline-none"
+                          >
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                          </select>
+                          <button onClick={() => handleDeleteChecklist(cl.id)} className="p-1 hover:bg-red-50 rounded text-warm-500 hover:text-red-400">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Points list */}
+                      <div className="space-y-1.5 pl-2 font-sans">
+                        {points.map(pt => (
+                          <div key={pt.id} className="flex items-center gap-2 group text-xs">
+                            <button onClick={() => handleTogglePoint(pt.id, !pt.completed)} className="text-warm-500 hover:text-brand-500">
+                              {pt.completed ? <CheckSquare size={13} className="text-emerald-500" /> : <Square size={13} />}
+                            </button>
+                            <span className={`flex-1 ${pt.completed ? 'line-through text-warm-400' : 'text-warm-700'}`}>{pt.title}</span>
+                            <button onClick={() => handleDeletePoint(pt.id)} className="p-0.5 text-warm-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex items-center gap-2 pt-1 border-t border-warm-300/40">
+                          <Plus size={12} className="text-warm-400" />
+                          <input
+                            type="text"
+                            value={newPointTitle[cl.id] || ''}
+                            onChange={e => setNewPointTitle({ ...newPointTitle, [cl.id]: e.target.value })}
+                            onKeyDown={e => e.key === 'Enter' && handleAddPoint(cl.id)}
+                            placeholder="Adicionar ponto (subtarefa)..."
+                            className="flex-1 bg-transparent text-xs text-warm-750 outline-none placeholder-warm-400"
+                          />
+                          {(newPointTitle[cl.id] || '').trim() && (
+                            <button onClick={() => handleAddPoint(cl.id)} className="text-[10px] text-brand-650 font-semibold hover:underline">
+                              Adicionar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Payment (Invoices & Receipts) Step Manager Component ──
+function PaymentStepManager({ proj, currentUser, refreshProject }) {
+  const payments = proj.payments || [];
+  const fiscalNotes = proj.fiscal_notes || [];
+
+  // Fiscal note form states
+  const [nfFormOpen, setNfFormOpen] = useState(false);
+  const [nfNumber, setNfNumber] = useState('');
+  const [nfDesc, setNfDesc] = useState('');
+  const [nfValue, setNfValue] = useState('');
+  const [nfDate, setNfDate] = useState('');
+  const [nfFile, setNfFile] = useState(null);
+  const [savingNf, setSavingNf] = useState(false);
+
+  // Payment receipts state
+  const [uploadingReceiptPaymentId, setUploadingReceiptPaymentId] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [savingReceipt, setSavingReceipt] = useState(false);
+
+  const handleCreateFiscalNote = async (e) => {
+    e.preventDefault();
+    if (!nfDesc.trim() || !nfValue || !nfDate || !currentUser) return;
+    setSavingNf(true);
+    try {
+      let fileUrl = '';
+      let filePath = '';
+
+      if (nfFile) {
+        const uploadRes = await uploadFile(currentUser.id, 'fiscal-notes', proj.id, nfFile);
+        if (uploadRes.error) throw uploadRes.error;
+        fileUrl = uploadRes.data.url;
+        filePath = uploadRes.data.path;
+      }
+
+      const { error } = await supabase.from('fiscal_notes').insert({
+        user_id: proj.user_id,
+        project_id: proj.id,
+        nf_number: nfNumber.trim(),
+        service_desc: nfDesc.trim(),
+        gross_value: parseFloat(nfValue) || 0,
+        issue_date: nfDate,
+        status: 'issued',
+        file_path: filePath || null,
+        file_url: fileUrl || null,
+      });
+
+      if (error) throw error;
+
+      setNfFormOpen(false);
+      setNfNumber('');
+      setNfDesc('');
+      setNfValue('');
+      setNfDate('');
+      setNfFile(null);
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao salvar nota fiscal:', err);
+      alert('Erro ao salvar nota fiscal');
+    } finally {
+      setSavingNf(false);
+    }
+  };
+
+  const handleUploadReceipt = async (paymentId) => {
+    if (!receiptFile || !currentUser) return;
+    setSavingReceipt(true);
+    try {
+      const uploadRes = await uploadFile(currentUser.id, 'projects', paymentId, receiptFile);
+      if (uploadRes.error) throw uploadRes.error;
+
+      const { error } = await supabase.from('media_files').insert({
+        user_id: proj.user_id,
+        project_id: proj.id,
+        file_name: receiptFile.name,
+        file_path: uploadRes.data.path,
+        file_url: uploadRes.data.url,
+        mime_type: receiptFile.type,
+        file_size: receiptFile.size,
+        description: `Comprovante de pagamento para lançamento: ${paymentId}`,
+        metadata: { payment_id: paymentId }
+      });
+      if (error) throw error;
+
+      const { error: payError } = await supabase
+        .from('payments')
+        .update({ status: 'paid', paid_date: new Date().toISOString() })
+        .eq('id', paymentId);
+      if (payError) throw payError;
+
+      setUploadingReceiptPaymentId(null);
+      setReceiptFile(null);
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao enviar comprovante:', err);
+    } finally {
+      setSavingReceipt(false);
+    }
+  };
+
+  const handleMarkAsPaid = async (paymentId) => {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .update({ status: 'paid', paid_date: new Date().toISOString() })
+        .eq('id', paymentId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao marcar como pago:', err);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Receipts Section */}
+      <div className="space-y-4">
+        <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-2">
+          <DollarSign size={16} className="text-brand-500" />
+          Faturamentos e Comprovantes
+        </h4>
+        {payments.length === 0 && (
+          <div className="text-center py-6 text-warm-500 bg-warm-50 rounded-2xl border border-warm-300/40">
+            Nenhum faturamento registrado.
+          </div>
+        )}
+        <div className="space-y-3">
+          {payments.map(pay => {
+            const receipts = proj.media_files?.filter(f => f.metadata?.payment_id === pay.id) || [];
+            return (
+              <Card key={pay.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h5 className="font-semibold text-sm text-warm-900">{pay.description}</h5>
+                    <Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge>
+                  </div>
+                  <p className="text-xs font-mono font-semibold text-warm-800">R$ {pay.amount.toLocaleString('pt-BR')}</p>
+                  <p className="text-[10px] text-warm-500">
+                    Vencimento: {pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}
+                    {pay.paid_date && ` | Confirmado em: ${new Date(pay.paid_date).toLocaleDateString('pt-BR')}`}
+                  </p>
+                  {receipts.map(rec => (
+                    <div key={rec.id} className="pt-1">
+                      <a
+                        href={rec.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-brand-600 hover:underline bg-brand-50 px-2 py-0.5 rounded"
+                      >
+                        <Download size={10} />
+                        Comprovante: {rec.file_name}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {pay.status !== 'paid' && (
+                    <>
+                      <Button variant="ghost" className="text-xs py-1 px-2.5 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => handleMarkAsPaid(pay.id)}>
+                        Marcar Pago
+                      </Button>
+                      <button
+                        onClick={() => setUploadingReceiptPaymentId(uploadingReceiptPaymentId === pay.id ? null : pay.id)}
+                        className="text-[11px] font-semibold text-brand-650 hover:underline bg-brand-50 px-2.5 py-1 rounded"
+                      >
+                        Enviar Comprovante
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {uploadingReceiptPaymentId === pay.id && (
+                  <div className="w-full md:w-auto flex items-center gap-2 border-t md:border-t-0 pt-2 md:pt-0">
+                    <input
+                      type="file"
+                      onChange={e => setReceiptFile(e.target.files[0] || null)}
+                      className="text-xs text-warm-500"
+                    />
+                    <Button variant="primary" className="py-1 px-3 text-xs" onClick={() => handleUploadReceipt(pay.id)} loading={savingReceipt}>
+                      Upload
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Fiscal Notes Section */}
+      <div className="space-y-4 pt-4">
+        <div className="flex items-center justify-between border-b border-warm-200 pb-2">
+          <h4 className="font-semibold text-sm text-warm-850 flex items-center gap-2">
+            <Receipt size={16} className="text-brand-500" />
+            Notas Fiscais Associadas
+          </h4>
+          <Button variant="secondary" className="py-1 px-3 text-xs" onClick={() => setNfFormOpen(!nfFormOpen)}>
+            {nfFormOpen ? 'Cancelar' : 'Adicionar Nota'}
+          </Button>
+        </div>
+
+        {nfFormOpen && (
+          <Card className="p-4">
+            <form onSubmit={handleCreateFiscalNote} className="space-y-4">
+              <h5 className="font-semibold text-xs text-warm-800">Nova Nota Fiscal</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Número</label>
+                  <input
+                    type="text"
+                    value={nfNumber}
+                    onChange={e => setNfNumber(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none"
+                    placeholder="Ex: 1045"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Valor (R$)</label>
+                  <input
+                    type="number"
+                    required
+                    value={nfValue}
+                    onChange={e => setNfValue(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Data de Emissão</label>
+                  <input
+                    type="date"
+                    required
+                    value={nfDate}
+                    onChange={e => setNfDate(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Descrição do Serviço</label>
+                <input
+                  type="text"
+                  required
+                  value={nfDesc}
+                  onChange={e => setNewDesc(e.target.value)}
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none"
+                  placeholder="Ex: Prestação de serviços de programação de sistemas..."
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-0.5">Nota em PDF</label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={e => setNfFile(e.target.files[0] || null)}
+                  className="w-full text-xs text-warm-500 file:mr-4 file:py-1 file:px-2.5 file:rounded file:border-0 file:bg-warm-200"
+                />
+              </div>
+              <div className="flex justify-end pt-1">
+                <Button type="submit" loading={savingNf}>Salvar Nota Fiscal</Button>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        {fiscalNotes.length === 0 && (
+          <div className="text-center py-6 text-warm-500 bg-warm-50 rounded-2xl border border-warm-300/40">
+            Nenhuma nota fiscal emitida.
+          </div>
+        )}
+        <div className="space-y-3">
+          {fiscalNotes.map(nf => (
+            <Card key={nf.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-warm-50/50">
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <h5 className="font-semibold text-sm text-warm-900">Nota Fiscal #{nf.nf_number || 'S/N'}</h5>
+                  <Badge color="green">{nf.status}</Badge>
+                </div>
+                <p className="text-xs text-warm-600">{nf.service_desc}</p>
+                <p className="text-[10px] text-warm-500 font-mono">
+                  R$ {nf.gross_value.toLocaleString('pt-BR')} | Emitida em: {new Date(nf.issue_date).toLocaleDateString('pt-BR')}
+                </p>
+                {nf.file_url && (
+                  <a
+                    href={nf.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-brand-650 hover:underline bg-brand-50 px-2 py-0.5 rounded mt-1"
+                  >
+                    <Download size={10} />
+                    Download PDF da Nota
+                  </a>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Finalization Step Component ──
+function FinalizationStepForm({ proj, onUpdateProject }) {
+  const [editing, setEditing] = useState(false);
+  const [documentation, setDocumentation] = useState(proj.metadata?.finalization?.documentation || '');
+  const [links, setLinks] = useState(proj.metadata?.finalization?.links || '');
+  const [info, setInfo] = useState(proj.metadata?.finalization?.info || '');
+  const [feedback, setFeedback] = useState(proj.metadata?.finalization?.feedback || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    if (onUpdateProject) {
+      await onUpdateProject(proj.id, {
+        metadata: {
+          ...proj.metadata,
+          finalization: {
+            documentation,
+            links,
+            info,
+            feedback
+          }
+        }
+      });
+    }
+    setSaving(false);
+    setEditing(false);
+  };
+
+  return (
+    <Card className="p-6 space-y-6">
+      <div className="flex items-center justify-between border-b border-warm-300 pb-3">
+        <h3 className="font-semibold text-lg text-warm-900 flex items-center gap-2">
+          <CheckCircle2 size={20} className="text-emerald-500" />
+          Encerramento e Finalização
+        </h3>
+        {!editing ? (
+          <Button variant="secondary" onClick={() => setEditing(true)}>Editar Dados</Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setEditing(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleSave} loading={saving}>Salvar</Button>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Documentações Finais</label>
+            {editing ? (
+              <textarea
+                value={documentation}
+                onChange={e => setDocumentation(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-3 text-sm focus:outline-none h-24 resize-none"
+                placeholder="Manuais de deploy, credenciais públicas..."
+              />
+            ) : (
+              <p className="text-warm-850 bg-warm-200/35 p-3 rounded-xl border border-warm-300/30 min-h-[96px] whitespace-pre-wrap">{documentation || 'Nenhuma documentação cadastrada.'}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Links Úteis (Produção, Repositórios, etc. - Separados por vírgula)</label>
+            {editing ? (
+              <input
+                type="text"
+                value={links}
+                onChange={e => setLinks(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-2.5 focus:outline-none"
+                placeholder="Ex: https://meusistema.com, https://github.com/..."
+              />
+            ) : (
+              <div className="space-y-1.5 mt-1 bg-warm-200/35 p-3 rounded-xl border border-warm-300/30 min-h-[48px]">
+                {links ? (
+                  links.split(',').map((l, idx) => {
+                    const cleanLink = l.trim();
+                    if (!cleanLink) return null;
+                    return (
+                      <div key={idx} className="flex items-center gap-1">
+                        <ArrowRight size={12} className="text-warm-500" />
+                        <a href={cleanLink.startsWith('http') ? cleanLink : `https://${cleanLink}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
+                          {cleanLink}
+                        </a>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <span className="text-warm-500">Nenhum link cadastrado.</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Informações de Desenvolvimento</label>
+            {editing ? (
+              <textarea
+                value={info}
+                onChange={e => setInfo(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-3 text-sm focus:outline-none h-24 resize-none"
+                placeholder="Detalhamento geral e notas sobre a execução..."
+              />
+            ) : (
+              <p className="text-warm-855 bg-warm-200/35 p-3 rounded-xl border border-warm-300/30 min-h-[96px] whitespace-pre-wrap">{info || 'Nenhuma informação registrada.'}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Feedback do Cliente</label>
+            {editing ? (
+              <textarea
+                value={feedback}
+                onChange={e => setFeedback(e.target.value)}
+                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-4 py-3 text-sm focus:outline-none h-24 resize-none"
+                placeholder="Apreciação final do cliente sobre o projeto..."
+              />
+            ) : (
+              <p className="text-warm-855 bg-warm-200/35 p-3 rounded-xl border border-warm-300/30 min-h-[96px] whitespace-pre-wrap">{feedback || 'Nenhum feedback registrado.'}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+
 export default function ProjetosView({
   projects, filter, onFilterChange, selectedProject, onSelectProject,
   onDeclineProject, onArchiveProject, onAdvanceWorkflow, onUpdateTask,
+  onUpdateProject,
   createProjectFolders,
   // Checklist props
   onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
@@ -236,6 +1534,13 @@ export default function ProjetosView({
   const [subTab, setSubTab] = useState('workflow');
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({ clientName: '', clientEmail: '', title: '', value: '' });
+
+  const [currentUser, setCurrentUser] = useState(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUser(user);
+    });
+  }, []);
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -256,6 +1561,26 @@ export default function ProjetosView({
   const tasks      = proj ? (proj.tasks || []) : [];
   const checklists = proj ? (proj.checklists || []) : [];
   const payments   = proj ? (proj.payments || []) : [];
+
+  const [activeStepId, setActiveStepId] = useState(null);
+  const currentProjId = proj?.id;
+  const [lastProjId, setLastProjId] = useState(null);
+  if (currentProjId !== lastProjId) {
+    setLastProjId(currentProjId);
+    setActiveStepId(stepNumber);
+  }
+
+  const refreshProject = async () => {
+    if (!proj) return;
+    const { data } = await supabase
+      .from('projects')
+      .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*)')
+      .eq('id', proj.id)
+      .single();
+    if (data) {
+      onSelectProject(data);
+    }
+  };
 
   const counts = {
     active:   projects.filter(p => p.status === 'active').length,
@@ -284,33 +1609,32 @@ export default function ProjetosView({
     const pendingTotal = Math.max(0, (proj.value || 0) - paidTotal);
     const paidPct = proj.value ? Math.min(100, Math.round((paidTotal / proj.value) * 100)) : 0;
 
-    // Merge tasks + checklists for kanban
     const kanbanItems = [
       ...tasks.map(t => ({ ...t, _type: 'task' })),
       ...checklists.map(c => ({ ...c, _type: 'checklist' })),
     ];
 
     return (
-      <div className="space-y-6 animate-in fade-in">
+      <div className="space-y-6 animate-in fade-in font-sans">
         {/* Project header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button onClick={handleBack}
-              className="p-2 text-warm-500 hover:text-warm-600 dark:hover:text-warm-800 hover:bg-warm-200 dark:hover:bg-warm-200 rounded-xl transition-all">
+              className="p-2 text-warm-500 hover:text-warm-650 hover:bg-warm-200 rounded-xl transition-all">
               <X size={18} />
             </button>
             <div>
-              <h2 className="text-xl font-bold text-warm-900 dark:text-warm-900 tracking-tight">{proj.title}</h2>
+              <h2 className="text-xl font-bold text-warm-900 tracking-tight">{proj.title}</h2>
               <div className="flex items-center gap-3 text-xs text-warm-500 font-medium mt-0.5">
                 <span className="flex items-center gap-1"><Users size={11} /> {proj.client?.name || 'Cliente'}</span>
-                <span className="text-warm-800 dark:text-warm-600">|</span>
-                <span className="flex items-center gap-1 font-mono font-semibold text-warm-500 dark:text-warm-600">
+                <span className="text-warm-300">|</span>
+                <span className="flex items-center gap-1 font-mono font-semibold text-warm-650">
                   <CreditCard size={11} /> R$ {(proj.value || 0).toLocaleString('pt-BR')}
                 </span>
                 {paidPct > 0 && (
                   <>
-                    <span className="text-warm-800 dark:text-warm-600">|</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{paidPct}% faturado</span>
+                    <span className="text-warm-300">|</span>
+                    <span className="text-emerald-600 font-semibold">{paidPct}% faturado</span>
                   </>
                 )}
               </div>
@@ -328,7 +1652,7 @@ export default function ProjetosView({
                 <Button variant="outline" icon={FolderOpen} className="h-9 text-xs px-3" onClick={() => createProjectFolders && createProjectFolders(proj)} disabled={proj.folders_created}>
                   {proj.folders_created ? 'Pastas OK' : 'Criar Pastas'}
                 </Button>
-<Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
+                <Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
                   {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
                 </Button>
               </>
@@ -337,17 +1661,17 @@ export default function ProjetosView({
         </div>
 
         {/* Sub-tabs */}
-        <div className="flex border-b border-warm-300 dark:border-warm-300 gap-1">
+        <div className="flex border-b border-warm-300 gap-1">
           <button onClick={handleBack}
-            className="pb-3 px-3 text-sm text-warm-500 hover:text-warm-500 dark:hover:text-warm-600 border-b-2 border-transparent transition-all font-medium">
+            className="pb-3 px-3 text-sm text-warm-500 hover:text-warm-650 border-b-2 border-transparent transition-all font-medium">
             ← Projetos
           </button>
           {['workflow', 'kanban', 'financeiro'].map(tab => (
             <button key={tab} onClick={() => setSubTab(tab)}
               className={`pb-3 px-4 text-sm font-medium transition-all border-b-2 capitalize
                 ${subTab === tab
-                  ? 'border-brand-500 text-warm-900 dark:text-warm-900'
-                  : 'border-transparent text-warm-500 hover:text-warm-500 dark:hover:text-warm-600'
+                  ? 'border-brand-500 text-warm-900 font-semibold'
+                  : 'border-transparent text-warm-500 hover:text-warm-650'
                 }`}>
               {tab}
             </button>
@@ -359,23 +1683,24 @@ export default function ProjetosView({
           <div className="space-y-8 py-2">
             {/* Timeline steps */}
             <div className="relative">
-              <div className="absolute top-5 left-0 right-0 h-px bg-warm-200 dark:bg-warm-200 z-0" />
+              <div className="absolute top-5 left-0 right-0 h-px bg-warm-250 z-0" />
               <div className="absolute top-5 left-0 h-px bg-brand-500 z-0 transition-all duration-700" style={{ width: `${((stepNumber - 1) / 6) * 100}%` }} />
               <div className="relative z-10 flex justify-between">
                 {WORKFLOW_STEPS.map(s => {
-                  const isActive = stepNumber === s.id;
+                  const isActive = activeStepId === s.id;
+                  const isCurrent = stepNumber === s.id;
                   const isDone   = stepNumber > s.id;
                   return (
-                    <div key={s.id} className="flex flex-col items-center gap-3" style={{ width: '14.28%' }}>
+                    <div key={s.id} className="flex flex-col items-center gap-3 cursor-pointer" style={{ width: '14.28%' }} onClick={() => setActiveStepId(s.id)}>
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
-                        ${isActive ? 'bg-brand-500 text-warm-900 shadow-brand scale-110 ring-4 ring-brand-100 dark:ring-brand-900/30' :
+                        ${isActive ? 'bg-brand-500 text-warm-900 shadow-brand scale-110 ring-4 ring-brand-100' :
                           isDone   ? 'bg-emerald-500 text-warm-900' :
                                      'bg-warm-200 border-2 border-warm-400 text-warm-500'}`}>
                         {isDone ? <CheckCircle2 size={16} /> : s.icon}
                       </div>
                       <p className={`text-[9px] font-bold uppercase tracking-wider text-center leading-tight
-                        ${isActive ? 'text-brand-600 dark:text-brand-400' :
-                          isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-warm-500'}`}>
+                        ${isActive ? 'text-brand-650' :
+                          isDone ? 'text-emerald-600' : 'text-warm-500'}`}>
                         {s.label}
                       </p>
                     </div>
@@ -384,35 +1709,89 @@ export default function ProjetosView({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Checklist section */}
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-sm text-warm-900 dark:text-warm-900">Checklists</h3>
-                  <Badge color="blue">{checklists.filter(c => c.status !== 'done').length} pendentes</Badge>
+            <div className="space-y-6">
+              {/* Step Title Header */}
+              <div className="bg-warm-200/50 p-4 rounded-2xl border border-warm-300/40 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-warm-900">Etapa {activeStepId}: {WORKFLOW_STEPS[activeStepId - 1]?.label}</h4>
+                  <p className="text-xs text-warm-500">{WORKFLOW_STEPS[activeStepId - 1]?.desc}</p>
                 </div>
-                <div className="space-y-2.5">
-                  {checklists.length === 0 && (
-                    <div className="flex flex-col items-center gap-2 py-4">
-                      <p className="text-sm text-warm-500">Nenhum checklist ainda</p>
-                    </div>
-                  )}
-                  {checklists.map(cl => (
-                    <ChecklistCard
-                      key={cl.id}
-                      cl={cl}
-                      onUpdateStatus={onUpdateChecklistStatus}
-                      onDelete={onDeleteChecklist}
-                      onAddItem={onAddChecklistItem}
-                      onToggleItem={onToggleChecklistItem}
-                      onDeleteItem={onDeleteChecklistItem}
-                      onUpdateChecklist={onUpdateChecklist}
-                    />
-                  ))}
-                  <InlineAdd onAdd={handleInlineAdd} />
-                </div>
-              </Card>
+                {activeStepId === stepNumber && stepNumber < 7 && (
+                  <Button variant="primary" className="py-1.5 px-3 text-xs" onClick={() => onAdvanceWorkflow(proj.id)}>
+                    Concluir e Avançar Etapa
+                  </Button>
+                )}
+              </div>
 
+              {/* Step Content Renderers */}
+              {activeStepId === 1 && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Card className="p-5 space-y-4">
+                      <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                        <Users size={15} />
+                        Dados de Contato
+                      </h4>
+                      <div className="space-y-3 text-sm text-warm-600">
+                        <div className="flex justify-between"><span className="font-medium">Nome do Cliente:</span> <span className="text-warm-900 font-semibold">{proj.client?.name || 'Não informado'}</span></div>
+                        <div className="flex justify-between"><span className="font-medium">Empresa:</span> <span className="text-warm-900">{proj.client?.company || 'Não informada'}</span></div>
+                        <div className="flex justify-between"><span className="font-medium">Cargo/Contato:</span> <span className="text-warm-900">{proj.client?.contact_person || 'Não informado'} {proj.client?.contact_position ? `(${proj.client.contact_position})` : ''}</span></div>
+                        <div className="flex justify-between"><span className="font-medium">Telefone:</span> <span className="text-warm-900">{proj.client?.phone || 'Não informado'}</span></div>
+                        <div className="flex justify-between"><span className="font-medium">E-mail:</span> <a href={`mailto:${proj.client?.email}`} className="text-brand-500 hover:underline">{proj.client?.email || 'Não informado'}</a></div>
+                        <div className="flex justify-between"><span className="font-medium">CPF/CNPJ:</span> <span className="text-warm-900">{proj.client?.cpf_cnpj || 'Não informado'}</span></div>
+                      </div>
+                    </Card>
+                    <Card className="p-5 space-y-4">
+                      <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                        <Info size={15} />
+                        Endereço & Notas
+                      </h4>
+                      <div className="space-y-3 text-sm text-warm-600">
+                        <div>
+                          <span className="font-medium">Endereço Completo:</span>
+                          <p className="text-warm-900 mt-1">
+                            {proj.client?.address ? `${proj.client.address}, ` : ''}
+                            {proj.client?.city ? `${proj.client.city} - ` : ''}
+                            {proj.client?.state || ''}
+                            {proj.client?.zip_code ? ` (CEP: ${proj.client.zip_code})` : ''}
+                            {(!proj.client?.address && !proj.client?.city) && 'Nenhum endereço cadastrado'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="font-medium">Observações Gerais:</span>
+                          <p className="text-warm-900 mt-1 bg-warm-200/40 p-3 rounded-lg border border-warm-300/40 italic">
+                            {proj.client?.notes || 'Nenhuma observação cadastrada.'}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {activeStepId === 2 && (
+                <DemandStepForm proj={proj} onUpdateProject={onUpdateProject} />
+              )}
+
+              {activeStepId === 3 && (
+                <CommercialStepManager type="proposal" proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
+              )}
+
+              {activeStepId === 4 && (
+                <CommercialStepManager type="contract" proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
+              )}
+
+              {activeStepId === 5 && (
+                <DevStepManager proj={proj} refreshProject={refreshProject} />
+              )}
+
+              {activeStepId === 6 && (
+                <PaymentStepManager proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
+              )}
+
+              {activeStepId === 7 && (
+                <FinalizationStepForm proj={proj} onUpdateProject={onUpdateProject} />
+              )}
             </div>
           </div>
         )}
@@ -432,7 +1811,7 @@ export default function ProjetosView({
                   <div className="flex items-center gap-2 px-1">
                     <div className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
                     <h4 className={`text-xs font-bold uppercase tracking-widest ${col.color}`}>{col.label}</h4>
-                    <span className="ml-auto text-[10px] font-bold text-warm-500 bg-warm-200 dark:bg-warm-200 rounded-full px-2 py-0.5">
+                    <span className="ml-auto text-[10px] font-bold text-warm-500 bg-warm-200 rounded-full px-2 py-0.5">
                       {colTasks.length}
                     </span>
                   </div>
@@ -447,27 +1826,26 @@ export default function ProjetosView({
                             onDelete={onDeleteChecklist}
                             onAddItem={onAddChecklistItem}
                             onToggleItem={onToggleChecklistItem}
-                            onDeleteItem={onDeleteChecklistItem}
+                            onDeleteItem={onDeleteItem}
                             onUpdateChecklist={onUpdateChecklist}
                           />
                         );
                       }
-                      // Regular task card
                       return (
                         <Card key={`task-${item.id}`} className="p-4 hover:shadow-elevated transition-shadow cursor-move">
-                          <p className="text-sm font-medium text-warm-800 dark:text-warm-800 mb-3 leading-snug">{item.title}</p>
+                          <p className="text-sm font-medium text-warm-850 mb-3 leading-snug">{item.title}</p>
                           <div className="flex justify-between items-center">
                             <Badge color="slate">{item.task_type || 'Tarefa'}</Badge>
                             <div className="flex gap-1">
                               {col.prev && (
                                 <button onClick={() => onUpdateTask(proj.id, item.id, col.prev)}
-                                  className="p-1.5 hover:bg-warm-200 dark:hover:bg-warm-300 rounded-lg transition-colors">
+                                  className="p-1.5 hover:bg-warm-200 rounded-lg transition-colors">
                                   <ChevronDown size={13} className="text-warm-500" />
                                 </button>
                               )}
                               {col.next && (
                                 <button onClick={() => onUpdateTask(proj.id, item.id, col.next)}
-                                  className="p-1.5 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors">
+                                  className="p-1.5 hover:bg-brand-50 rounded-lg transition-colors">
                                   <ChevronRight size={13} className="text-brand-500" />
                                 </button>
                               )}
@@ -476,7 +1854,6 @@ export default function ProjetosView({
                         </Card>
                       );
                     })}
-                    {/* Inline add in "A Fazer" column */}
                     {col.status === 'todo' && (
                       <InlineAdd onAdd={handleInlineAdd} />
                     )}
@@ -491,7 +1868,7 @@ export default function ProjetosView({
         {subTab === 'financeiro' && (
           <div className="space-y-5 py-2">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-warm-50 dark:bg-warm-200 rounded-2xl p-5 border border-warm-300 dark:border-warm-400">
+              <div className="bg-warm-50 rounded-2xl p-5 border border-warm-300">
                 <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-2">Valor do Projeto</p>
                 <p className="text-3xl font-bold text-warm-900 font-mono">R$ {(proj.value || 0).toLocaleString('pt-BR')}</p>
                 <div className="mt-3 h-1.5 bg-warm-300 rounded-full overflow-hidden">
@@ -501,18 +1878,18 @@ export default function ProjetosView({
               </div>
               <Card className="p-5">
                 <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-2">Ja Faturado</p>
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">R$ {paidTotal.toLocaleString('pt-BR')}</p>
+                <p className="text-2xl font-bold text-emerald-600 font-mono">R$ {paidTotal.toLocaleString('pt-BR')}</p>
                 <p className="text-[11px] text-warm-500 mt-1">pagamentos confirmados</p>
               </Card>
               <Card className="p-5">
                 <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-2">Saldo Pendente</p>
-                <p className="text-2xl font-bold text-amber-500 dark:text-amber-400 font-mono">R$ {pendingTotal.toLocaleString('pt-BR')}</p>
+                <p className="text-2xl font-bold text-amber-500 font-mono">R$ {pendingTotal.toLocaleString('pt-BR')}</p>
                 <p className="text-[11px] text-warm-500 mt-1">a receber</p>
               </Card>
             </div>
             <Card>
-              <div className="px-6 py-4 border-b border-warm-200 dark:border-warm-300">
-                <h4 className="font-semibold text-sm text-warm-900 dark:text-warm-900">Historico de Lancamentos</h4>
+              <div className="px-6 py-4 border-b border-warm-200">
+                <h4 className="font-semibold text-sm text-warm-900">Historico de Lancamentos</h4>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -524,15 +1901,15 @@ export default function ProjetosView({
                       <th className="px-6 py-3.5">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-50 dark:divide-warm-300">
+                  <tbody className="divide-y divide-zinc-50">
                     {payments.length === 0 ? (
                       <tr><td colSpan="4" className="px-6 py-12 text-center text-warm-500 text-sm">Nenhum pagamento registrado.</td></tr>
                     ) : (
                       payments.map(pay => (
                         <tr key={pay.id} className="hover:bg-warm-200/30 transition-colors">
                           <td className="px-6 py-4 font-mono text-sm text-warm-500">{pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}</td>
-                          <td className="px-6 py-4 font-medium text-warm-600 dark:text-warm-600">{pay.description}</td>
-                          <td className="px-6 py-4 font-semibold font-mono text-warm-900 dark:text-warm-900">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
+                          <td className="px-6 py-4 font-medium text-warm-600">{pay.description}</td>
+                          <td className="px-6 py-4 font-semibold font-mono text-warm-900">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
                           <td className="px-6 py-4"><Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge></td>
                         </tr>
                       ))

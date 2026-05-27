@@ -10,11 +10,13 @@ CREATE TABLE IF NOT EXISTS checklists (
   id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   project_id  UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  task_id     UUID REFERENCES tasks(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT,
   priority    TEXT NOT NULL DEFAULT 'normal'
               CHECK (priority IN ('alta', 'normal', 'baixa')),
   status      task_status NOT NULL DEFAULT 'todo',
+  complexity  TEXT,
   position    INTEGER DEFAULT 0,
   due_date    TIMESTAMPTZ,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
@@ -36,6 +38,7 @@ CREATE TABLE IF NOT EXISTS checklist_items (
 CREATE INDEX IF NOT EXISTS idx_checklists_user    ON checklists(user_id);
 CREATE INDEX IF NOT EXISTS idx_checklists_project ON checklists(project_id);
 CREATE INDEX IF NOT EXISTS idx_checklists_status  ON checklists(status);
+CREATE INDEX IF NOT EXISTS idx_checklists_task    ON checklists(task_id);
 CREATE INDEX IF NOT EXISTS idx_checklist_items_checklist ON checklist_items(checklist_id);
 
 

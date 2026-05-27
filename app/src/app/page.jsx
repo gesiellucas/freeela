@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
@@ -767,6 +767,29 @@ export default function App() {
     }
   };
 
+  const handleUpdateProject = async (projectId, updates) => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', projectId)
+        .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*)')
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...data } : p));
+        if (selectedProject?.id === projectId) {
+          setSelectedProject(data);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar projeto:', err);
+      alert(err.message || 'Erro ao atualizar projeto');
+    }
+  };
+
   const handleSelectRoot = async () => {
     try {
       const selectedPath = await window.electronAPI?.selectDirectory();
@@ -1032,6 +1055,7 @@ export default function App() {
                   onArchiveProject={handleArchiveProject}
                   onAdvanceWorkflow={handleAdvanceWorkflow}
                   onUpdateTask={updateTaskStatus}
+                  onUpdateProject={handleUpdateProject}
                   createProjectFolders={createProjectFolders}
                   onCreateChecklist={handleCreateChecklist}
                   onUpdateChecklist={handleUpdateChecklist}
