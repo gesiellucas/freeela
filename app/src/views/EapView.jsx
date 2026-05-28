@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Network, Plus, Trash2, Edit2, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Loader2, Save } from 'lucide-react';
 import { getEapByProjectId, createEap, createEapItem, updateEapItem, deleteEapItem } from '../lib/eap';
+import { supabase } from '../lib/supabase';
 
 const EapView = ({ projects, userId }) => {
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -13,19 +14,57 @@ const EapView = ({ projects, userId }) => {
   const [newItemName, setNewItemName] = useState('');
   const [newItemType, setNewItemType] = useState('Pacote_Trabalho');
 
+  const [scopeVersions, setScopeVersions] = useState([]);
+  const [selectedVersionId, setSelectedVersionId] = useState('');
+
+  const isReadOnly = scopeVersions.find(v => v.id === selectedVersionId)?.status !== 'active';
+
   useEffect(() => {
     if (selectedProjectId) {
-      loadEap();
+      loadVersions();
     } else {
+      setScopeVersions([]);
+      setSelectedVersionId('');
       setEap(null);
       setItems([]);
     }
   }, [selectedProjectId]);
 
-  const loadEap = async () => {
+  const loadVersions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scope_versions')
+        .select('*')
+        .eq('project_id', selectedProjectId)
+        .order('version_number', { ascending: false });
+
+      if (error) throw error;
+
+      setScopeVersions(data || []);
+      if (data && data.length > 0) {
+        // Encontrar a versão ativa, senão pegar a mais recente
+        const active = data.find(v => v.status === 'active') || data[0];
+        setSelectedVersionId(active.id);
+      } else {
+        setSelectedVersionId('');
+        setEap(null);
+        setItems([]);
+      }
+    } catch (err) {
+      console.error('Error loading versions:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedProjectId && selectedVersionId) {
+      loadEap(selectedVersionId);
+    }
+  }, [selectedProjectId, selectedVersionId]);
+
+  const loadEap = async (versionId) => {
     setLoading(true);
     try {
-      const data = await getEapByProjectId(selectedProjectId);
+      const data = await getEapByProjectId(selectedProjectId, versionId);
       if (data) {
         setEap({ id: data.id, name: data.name, description: data.description });
         setItems(data.items || []);
@@ -50,7 +89,6 @@ const EapView = ({ projects, userId }) => {
     try {
       const proj = projects.find(p => p.id === selectedProjectId);
       const newEap = await createEap(selectedProjectId, userId, `EAP - ${proj.title}`);
-      setEap(newEap);
       
       // Auto create root item
       const rootItem = await createEapItem(newEap.id, null, {
@@ -60,8 +98,9 @@ const EapView = ({ projects, userId }) => {
         nivel: 1,
         ordem: 1
       });
-      setItems([rootItem]);
-      setExpandedNodes({ [rootItem.id]: true });
+      
+      // Reload versions list to get version 1
+      await loadVersions();
     } catch (error) {
       console.error('Error creating EAP:', error);
     } finally {
@@ -116,7 +155,7 @@ const EapView = ({ projects, userId }) => {
     if (!window.confirm('Tem certeza? Isso excluirá também todos os sub-itens.')) return;
     try {
       await deleteEapItem(itemId);
-      await loadEap(); // reload to get correct tree after cascade delete
+      await loadEap(selectedVersionId); // reload to get correct tree after cascade delete
     } catch (error) {
       console.error('Error deleting item:', error);
     }
@@ -191,19 +230,21 @@ const EapView = ({ projects, userId }) => {
             <span className="text-xs text-warm-500 w-8">{node.percentual_concluido || 0}%</span>
           </div>
 
-          <div className="flex items-center gap-2 opacity-0 hover:opacity-100 transition-opacity">
-            <button onClick={() => setNewItemParentId(node.id)} className="p-1.5 text-warm-500 hover:bg-warm-200 rounded-md hover:text-brand-500" title="Adicionar Sub-item">
-              <Plus size={14} />
-            </button>
-            <button onClick={() => setEditingItem(node.id)} className="p-1.5 text-warm-500 hover:bg-warm-200 rounded-md hover:text-blue-500" title="Editar">
-              <Edit2 size={14} />
-            </button>
-            {node.parent_id !== null && ( // Don't delete root here
-              <button onClick={() => handleDeleteItem(node.id)} className="p-1.5 text-warm-500 hover:bg-red-50 rounded-md hover:text-red-500" title="Excluir">
-                <Trash2 size={14} />
+          {!isReadOnly && (
+            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => setNewItemParentId(node.id)} className="p-1.5 text-warm-500 hover:bg-warm-200 rounded-md hover:text-brand-500" title="Adicionar Sub-item">
+                <Plus size={14} />
               </button>
-            )}
-          </div>
+              <button onClick={() => setEditingItem(node.id)} className="p-1.5 text-warm-500 hover:bg-warm-200 rounded-md hover:text-blue-500" title="Editar">
+                <Edit2 size={14} />
+              </button>
+              {node.parent_id !== null && ( // Don't delete root here
+                <button onClick={() => handleDeleteItem(node.id)} className="p-1.5 text-warm-500 hover:bg-red-50 rounded-md hover:text-red-500" title="Excluir">
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Form to add child */}
@@ -301,9 +342,27 @@ const EapView = ({ projects, userId }) => {
       ) : (
         <div className="bg-warm-100 border border-warm-300 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6 pb-6 border-b border-warm-300">
-            <div>
-              <h3 className="font-semibold text-warm-900 text-lg">{eap.name}</h3>
-              <p className="text-sm text-warm-500 mt-0.5">{items.length} itens planejados</p>
+            <div className="flex items-center gap-6">
+              <div>
+                <h3 className="font-semibold text-warm-900 text-lg">{eap.name}</h3>
+                <p className="text-sm text-warm-500 mt-0.5">{items.length} itens planejados</p>
+              </div>
+              {scopeVersions.length > 0 && (
+                <div className="flex items-center gap-2 bg-warm-200/50 px-3 py-1.5 rounded-xl border border-warm-300">
+                  <span className="text-[10px] font-black uppercase text-warm-500 tracking-wider">Versão:</span>
+                  <select
+                    value={selectedVersionId}
+                    onChange={(e) => setSelectedVersionId(e.target.value)}
+                    className="bg-transparent border-none text-xs font-bold text-warm-950 focus:outline-none cursor-pointer"
+                  >
+                    {scopeVersions.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        v{v.version_number} - {v.notes || `Versão ${v.version_number}`} ({v.status === 'active' ? 'Ativa' : 'Arquivada'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <button className="px-4 py-2 bg-warm-50 border border-warm-400 text-warm-800 rounded-xl text-sm font-medium hover:bg-warm-100 transition-colors">
@@ -315,6 +374,13 @@ const EapView = ({ projects, userId }) => {
               </button>
             </div>
           </div>
+
+          {isReadOnly && (
+            <div className="bg-yellow-50 border border-yellow-200/60 rounded-xl p-3 text-xs text-yellow-800 flex items-center gap-2 mb-6 shadow-sm">
+              <AlertCircle size={14} className="text-yellow-600 flex-shrink-0" />
+              <span>Você está visualizando um escopo histórico (versão arquivada). A edição e adição de itens estão desabilitadas para preservar o histórico operacional.</span>
+            </div>
+          )}
 
           <div className="space-y-1">
             {tree.map(node => renderTreeItem(node))}

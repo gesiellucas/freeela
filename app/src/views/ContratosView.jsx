@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, FileSignature, Trash2, Loader2, CheckCircle2, X, Paperclip, Pencil, Save, MapPin, Mail, Phone, Building2, User } from 'lucide-react';
-import { createContract, updateContract, deleteContract, supabase } from '../lib/supabase';
+import { createContract, updateContract, deleteContract, createAddendum, supabase } from '../lib/supabase';
 import FileUploader from '../components/ui/FileUploader';
 
 const Badge = ({ color = 'slate', children }) => {
@@ -29,6 +29,19 @@ export default function ContratosView({
   const [saving, setSaving] = useState(false);
   const [createdContract, setCreatedContract] = useState(null);
   const [selectedContract, setSelectedContract] = useState(null);
+
+  const [isAddendumModalOpen, setIsAddendumModalOpen] = useState(false);
+  const [addendumForm, setAddendumForm] = useState({
+    title: '',
+    total_value: '',
+    estimated_hours: '',
+    description: '',
+    status: 'draft',
+    effective_date: '',
+    expiry_date: '',
+    notes: ''
+  });
+  const [scopeVersions, setScopeVersions] = useState([]);
 
   const [form, setForm] = useState({
     title: '', project_id: '', description: '', status: 'draft',
@@ -200,6 +213,68 @@ export default function ContratosView({
   const syncedSelected = selectedContract
     ? (contracts.find(c => c.id === selectedContract.id) || selectedContract)
     : null;
+
+  // Buscar versões de escopo para o projeto selecionado
+  React.useEffect(() => {
+    if (syncedSelected?.project_id) {
+      supabase
+        .from('scope_versions')
+        .select('*')
+        .eq('project_id', syncedSelected.project_id)
+        .order('version_number', { ascending: true })
+        .then(({ data }) => {
+          if (data) setScopeVersions(data);
+        });
+    } else {
+      setScopeVersions([]);
+    }
+  }, [syncedSelected?.project_id, contracts]);
+
+  const handleCreateAddendum = async () => {
+    if (!addendumForm.title || !syncedSelected?.project_id) return;
+    setSaving(true);
+    try {
+      const { data, error } = await createAddendum(userId, {
+        title: addendumForm.title,
+        project_id: syncedSelected.project_id,
+        description: addendumForm.description || undefined,
+        status: addendumForm.status,
+        total_value: parseFloat(addendumForm.total_value) || 0,
+        estimated_hours: parseFloat(addendumForm.estimated_hours) || undefined,
+        effective_date: addendumForm.effective_date || undefined,
+        expiry_date: addendumForm.expiry_date || undefined,
+        notes: addendumForm.notes || undefined,
+      });
+
+      if (error) throw error;
+
+      const project = projects.find(p => p.id === syncedSelected.project_id);
+      const enriched = { ...data, media_files: [], project };
+
+      if (onContractCreated) onContractCreated(enriched);
+      setSelectedContract(enriched);
+      
+      setIsAddendumModalOpen(false);
+      setAddendumForm({
+        title: '',
+        total_value: '',
+        estimated_hours: '',
+        description: '',
+        status: 'draft',
+        effective_date: '',
+        expiry_date: '',
+        notes: ''
+      });
+
+      if (addendumForm.status === 'signed') {
+        alert('Aditivo assinado e nova versão da EAP gerada com sucesso!');
+      }
+    } catch (err) {
+      alert('Erro ao criar aditivo: ' + (err.message || err));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Group by project
   const byProject = {};
@@ -632,6 +707,82 @@ export default function ContratosView({
                 </div>
               )}
 
+              {/* Card de Aditivos & Histórico de Escopo */}
+              <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-black text-sm flex items-center gap-2 underline decoration-purple-500 decoration-4 underline-offset-4 uppercase italic">
+                    <FileSignature size={14} /> Acordos & Aditivos do Projeto
+                  </h3>
+                  <button
+                    onClick={() => setIsAddendumModalOpen(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-purple-650 hover:bg-purple-700 text-warm-900 rounded-xl text-xs font-black transition-all shadow-md shadow-purple-500/10"
+                  >
+                    <Plus size={12} /> Adicionar Aditivo
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {contracts
+                    .filter(c => c.project_id === syncedSelected.project_id)
+                    .map(c => {
+                      const isMainContract = c.commercial_agreement?.type !== 'addendum';
+                      const value = c.commercial_agreement?.total_value || 0;
+                      const relatedVersion = scopeVersions.find(v => v.commercial_agreement_id === c.commercial_agreement_id);
+
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => {
+                            if (c.id !== syncedSelected.id) {
+                              setSelectedContract(c);
+                            }
+                          }}
+                          className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                            c.id === syncedSelected.id
+                              ? 'border-purple-400 bg-purple-900/10 dark:bg-purple-900/20 border-purple-700'
+                              : 'border-warm-300/60 bg-warm-50 hover:border-warm-400 hover:bg-warm-200/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <FileSignature size={14} className={isMainContract ? 'text-blue-500' : 'text-purple-500'} />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold truncate">{c.title}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${
+                                  isMainContract ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                  {isMainContract ? 'Contrato' : 'Aditivo'}
+                                </span>
+                                <Badge color={statusColor(c.status)}>{statusLabel(c.status)}</Badge>
+                                {relatedVersion && (
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                                    relatedVersion.status === 'active' 
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                      : 'bg-warm-200 text-warm-500'
+                                  }`}>
+                                    v{relatedVersion.version_number} ({relatedVersion.status === 'active' ? 'Ativa' : 'Arquivada'})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className="text-xs font-bold font-mono text-warm-900">
+                              R$ {value.toLocaleString('pt-BR')}
+                            </p>
+                            {c.commercial_agreement?.estimated_hours && (
+                              <p className="text-[9px] text-warm-500 mt-0.5">
+                                {c.commercial_agreement.estimated_hours}h est.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
               {/* Card de arquivos — estilo checklist */}
               <div className="bg-warm-50 rounded-xl border border-warm-300/60 shadow-sm p-5">
                 <h3 className="font-black text-sm mb-4 flex items-center gap-2 underline decoration-blue-500 decoration-4 underline-offset-4 uppercase italic">
@@ -773,6 +924,135 @@ export default function ContratosView({
                 className="px-6 py-2 bg-green-600 text-warm-900 rounded-xl text-sm font-bold hover:bg-green-700 transition-colors flex items-center gap-2"
               >
                 <CheckCircle2 size={14} /> Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Criar Aditivo */}
+      {isAddendumModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-warm-50 rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-warm-300/60 flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-lg">Novo Aditivo Contratual</h3>
+                <p className="text-[10px] text-warm-500 mt-0.5">
+                  Modificação de escopo e valor para: {syncedSelected?.project?.title || 'Projeto'}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAddendumModalOpen(false)}
+                className="p-1 hover:bg-warm-200 rounded-lg text-warm-500"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+              <div>
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Título do Aditivo *</label>
+                <input
+                  type="text"
+                  className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500"
+                  placeholder="Ex: Aditivo 01 - Integração com API Externa"
+                  value={addendumForm.title}
+                  onChange={e => setAddendumForm({ ...addendumForm, title: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Valor Adicional (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500"
+                    placeholder="Ex: 5000.00"
+                    value={addendumForm.total_value}
+                    onChange={e => setAddendumForm({ ...addendumForm, total_value: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Horas Estimadas (Opcional)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500"
+                    placeholder="Ex: 40"
+                    value={addendumForm.estimated_hours}
+                    onChange={e => setAddendumForm({ ...addendumForm, estimated_hours: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Descrição</label>
+                <textarea
+                  className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 h-16 resize-none"
+                  placeholder="Descrição do escopo do aditivo..."
+                  value={addendumForm.description}
+                  onChange={e => setAddendumForm({ ...addendumForm, description: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Status</label>
+                  <select
+                    className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500"
+                    value={addendumForm.status}
+                    onChange={e => setAddendumForm({ ...addendumForm, status: e.target.value })}
+                  >
+                    {['draft', 'sent', 'signed', 'cancelled'].map(s => (
+                      <option key={s} value={s}>{statusLabel(s)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Data Início</label>
+                  <input
+                    type="date"
+                    className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500"
+                    value={addendumForm.effective_date}
+                    onChange={e => setAddendumForm({ ...addendumForm, effective_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Data Fim</label>
+                  <input
+                    type="date"
+                    className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500"
+                    value={addendumForm.expiry_date}
+                    onChange={e => setAddendumForm({ ...addendumForm, expiry_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-warm-500 block mb-1">Observações</label>
+                <textarea
+                  className="w-full bg-warm-200/60 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 h-16 resize-none"
+                  placeholder="Observações internas..."
+                  value={addendumForm.notes}
+                  onChange={e => setAddendumForm({ ...addendumForm, notes: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-warm-300/60 flex justify-end gap-3">
+              <button
+                onClick={() => setIsAddendumModalOpen(false)}
+                className="px-4 py-2 border border-warm-400 text-warm-500 rounded-xl text-sm font-bold hover:bg-warm-200/50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateAddendum}
+                disabled={saving || !addendumForm.title || !addendumForm.total_value}
+                className="px-4 py-2 bg-purple-650 text-warm-900 rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center gap-2 shadow-lg shadow-purple-500/20"
+              >
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                Criar Aditivo
               </button>
             </div>
           </div>

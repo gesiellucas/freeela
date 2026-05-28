@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { DollarSign, TrendingUp, Clock, ArrowRight } from 'lucide-react';
 
 const WORKFLOW_STEPS = [
@@ -13,8 +13,19 @@ const getStepNumber = (stepKey) => {
   return s ? s.id : 1;
 };
 
-export default function FinanceiroView({ projects, onSelectProject }) {
+export default function FinanceiroView({ projects, contracts = [], onSelectProject }) {
   const activeProjects = projects.filter(p => p.status === 'active');
+
+  const getProjectTotalValue = (project) => {
+    // Buscar todos os contratos e aditivos assinados deste projeto
+    const projectAgreements = contracts.filter(
+      c => c.project_id === project.id && c.status === 'signed'
+    );
+    if (projectAgreements.length === 0) return project.value || 0;
+
+    // Somar o valor total de todos os acordos comerciais correspondentes
+    return projectAgreements.reduce((acc, c) => acc + (c.commercial_agreement?.total_value || 0), 0);
+  };
 
   const totalBilled = activeProjects.reduce((acc, p) => {
     return acc + (p.payments || []).filter(pay => pay.status === 'paid').reduce((a, pay) => a + (pay.amount || 0), 0);
@@ -23,7 +34,8 @@ export default function FinanceiroView({ projects, onSelectProject }) {
   const billableProjects = activeProjects.filter(p => getStepNumber(p.current_step) >= 6);
   const totalPending = billableProjects.reduce((acc, p) => {
     const paid = (p.payments || []).filter(pay => pay.status === 'paid').reduce((a, pay) => a + (pay.amount || 0), 0);
-    return acc + Math.max(0, (p.value || 0) - paid);
+    const projValue = getProjectTotalValue(p);
+    return acc + Math.max(0, projValue - paid);
   }, 0);
 
   return (
@@ -91,10 +103,11 @@ export default function FinanceiroView({ projects, onSelectProject }) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeProjects.map(p => {
+              const projValue = getProjectTotalValue(p);
               const payments = p.payments || [];
               const totalPaid = payments.filter(pay => pay.status === 'paid').reduce((acc, pay) => acc + (pay.amount || 0), 0);
-              const pct = p.value ? Math.min(100, Math.round((totalPaid / p.value) * 100)) : 0;
-              const pending = Math.max(0, (p.value || 0) - totalPaid);
+              const pct = projValue ? Math.min(100, Math.round((totalPaid / projValue) * 100)) : 0;
+              const pending = Math.max(0, projValue - totalPaid);
               const isBillable = getStepNumber(p.current_step) >= 6;
 
               return (
@@ -105,8 +118,8 @@ export default function FinanceiroView({ projects, onSelectProject }) {
                       <p className="font-semibold text-sm text-warm-900 truncate">{p.client?.name || 'Cliente'}</p>
                       <p className="text-[11px] text-warm-500 mt-0.5 truncate">{p.title}</p>
                     </div>
-                    <span className="font-bold font-mono text-sm text-warm-800 whitespace-nowrap">
-                      R$ {(p.value || 0).toLocaleString('pt-BR')}
+                    <span className="font-bold font-mono text-sm text-warm-900 whitespace-nowrap">
+                      R$ {projValue.toLocaleString('pt-BR')}
                     </span>
                   </div>
 

@@ -1019,6 +1019,7 @@ export default function App() {
               {activeTab === 'finances' && (
                 <FinanceiroView
                   projects={projects}
+                  contracts={contracts}
                   onSelectProject={(p) => { setSelectedProject(p); setActiveTab('projects'); }}
                 />
               )}

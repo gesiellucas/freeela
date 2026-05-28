@@ -391,13 +391,52 @@ export async function markPaymentAsPaid(paymentId: string) {
 }
 
 // ============================================
+// ACORDOS COMERCIAIS
+// ============================================
+
+export async function getCommercialAgreements(userId: string, projectId?: string) {
+  let q = supabase
+    .from('commercial_agreements')
+    .select('*, project:projects(id, title, client:clients(name)), lead:leads(id, name)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (projectId) {
+    q = q.eq('project_id', projectId);
+  }
+
+  return q;
+}
+
+export async function createCommercialAgreement(userId: string, data: any) {
+  return supabase
+    .from('commercial_agreements')
+    .insert({ user_id: userId, ...data })
+    .select()
+    .single();
+}
+
+export async function updateCommercialAgreement(agreementId: string, updates: any) {
+  return supabase
+    .from('commercial_agreements')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', agreementId)
+    .select()
+    .single();
+}
+
+export async function deleteCommercialAgreement(agreementId: string) {
+  return supabase.from('commercial_agreements').delete().eq('id', agreementId);
+}
+
+// ============================================
 // PROPOSTAS COMERCIAIS
 // ============================================
 
 export async function getProposals(userId: string) {
   return supabase
     .from('proposals')
-    .select('*, project:projects(id, title, client:clients(name)), lead:leads(id, name), media_files(*)')
+    .select('*, project:projects(id, title, client:clients(name)), lead:leads(id, name), media_files(*), commercial_agreement:commercial_agreements(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 }
@@ -410,11 +449,34 @@ export async function createProposal(userId: string, data: {
   status?: string
   notes?: string
 }) {
+  // Criar acordo comercial associado
+  const { data: agreement, error: agreementError } = await supabase
+    .from('commercial_agreements')
+    .insert({
+      user_id: userId,
+      project_id: data.project_id || null,
+      lead_id: data.lead_id || null,
+      title: data.title,
+      description: data.description || null,
+      type: 'proposal',
+      status: data.status || 'draft',
+      total_value: 0.00,
+      notes: data.notes || null,
+    })
+    .select()
+    .single();
+
+  if (agreementError) return { data: null, error: agreementError };
+
   return supabase
     .from('proposals')
-    .insert({ user_id: userId, ...data })
+    .insert({
+      user_id: userId,
+      commercial_agreement_id: agreement.id,
+      ...data
+    })
     .select()
-    .single()
+    .single();
 }
 
 export async function updateProposal(proposalId: string, updates: {
@@ -425,6 +487,27 @@ export async function updateProposal(proposalId: string, updates: {
   responded_at?: string
   notes?: string
 }) {
+  const { data: prop } = await supabase
+    .from('proposals')
+    .select('commercial_agreement_id')
+    .eq('id', proposalId)
+    .single();
+
+  if (prop?.commercial_agreement_id) {
+    const agreementUpdates: any = {};
+    if (updates.title !== undefined) agreementUpdates.title = updates.title;
+    if (updates.description !== undefined) agreementUpdates.description = updates.description;
+    if (updates.status !== undefined) agreementUpdates.status = updates.status;
+    if (updates.notes !== undefined) agreementUpdates.notes = updates.notes;
+
+    if (Object.keys(agreementUpdates).length > 0) {
+      await supabase
+        .from('commercial_agreements')
+        .update(agreementUpdates)
+        .eq('id', prop.commercial_agreement_id);
+    }
+  }
+
   return supabase
     .from('proposals')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -434,7 +517,19 @@ export async function updateProposal(proposalId: string, updates: {
 }
 
 export async function deleteProposal(proposalId: string) {
-  return supabase.from('proposals').delete().eq('id', proposalId)
+  const { data: prop } = await supabase
+    .from('proposals')
+    .select('commercial_agreement_id')
+    .eq('id', proposalId)
+    .single();
+
+  const res = await supabase.from('proposals').delete().eq('id', proposalId);
+
+  if (prop?.commercial_agreement_id) {
+    await supabase.from('commercial_agreements').delete().eq('id', prop.commercial_agreement_id);
+  }
+
+  return res;
 }
 
 // ============================================
@@ -444,7 +539,7 @@ export async function deleteProposal(proposalId: string) {
 export async function getContracts(userId: string) {
   return supabase
     .from('contracts')
-    .select('*, project:projects(id, title, client:clients(*)), media_files(*)')
+    .select('*, project:projects(id, title, client:clients(*)), media_files(*), commercial_agreement:commercial_agreements(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 }
@@ -458,9 +553,43 @@ export async function createContract(userId: string, data: {
   expiry_date?: string
   notes?: string
 }) {
+  // Buscar valor do projeto para o valor total do acordo
+  const { data: proj } = await supabase
+    .from('projects')
+    .select('value')
+    .eq('id', data.project_id)
+    .single();
+
+  const projValue = proj?.value || 0;
+
+  // Criar acordo comercial associado
+  const { data: agreement, error: agreementError } = await supabase
+    .from('commercial_agreements')
+    .insert({
+      user_id: userId,
+      project_id: data.project_id,
+      title: data.title,
+      description: data.description || null,
+      type: 'contract',
+      status: data.status || 'draft',
+      total_value: projValue,
+      billing_model: 'fixed_price',
+      effective_date: data.effective_date || null,
+      expiry_date: data.expiry_date || null,
+      notes: data.notes || null,
+    })
+    .select()
+    .single();
+
+  if (agreementError) return { data: null, error: agreementError };
+
   return supabase
     .from('contracts')
-    .insert({ user_id: userId, ...data })
+    .insert({
+      user_id: userId,
+      commercial_agreement_id: agreement.id,
+      ...data
+    })
     .select()
     .single()
 }
@@ -474,6 +603,50 @@ export async function updateContract(contractId: string, updates: {
   expiry_date?: string
   notes?: string
 }) {
+  const { data: contr } = await supabase
+    .from('contracts')
+    .select('commercial_agreement_id, user_id, project_id, status')
+    .eq('id', contractId)
+    .single();
+
+  if (contr?.commercial_agreement_id) {
+    const agreementUpdates: any = {};
+    if (updates.title !== undefined) agreementUpdates.title = updates.title;
+    if (updates.description !== undefined) agreementUpdates.description = updates.description;
+    if (updates.status !== undefined) agreementUpdates.status = updates.status;
+    if (updates.effective_date !== undefined) agreementUpdates.effective_date = updates.effective_date;
+    if (updates.expiry_date !== undefined) agreementUpdates.expiry_date = updates.expiry_date;
+    if (updates.notes !== undefined) agreementUpdates.notes = updates.notes;
+
+    if (Object.keys(agreementUpdates).length > 0) {
+      await supabase
+        .from('commercial_agreements')
+        .update(agreementUpdates)
+        .eq('id', contr.commercial_agreement_id);
+    }
+
+    // Se o status mudou para 'signed' agora, e for um aditivo, executa o versionamento recursivo da EAP
+    if (updates.status === 'signed' && contr.status !== 'signed') {
+      const { data: agreement } = await supabase
+        .from('commercial_agreements')
+        .select('type')
+        .eq('id', contr.commercial_agreement_id)
+        .single();
+
+      if (agreement && agreement.type === 'addendum') {
+        const { error: eapError } = await supabase.rpc('fn_create_new_eap_version', {
+          p_project_id: contr.project_id,
+          p_user_id: contr.user_id,
+          p_agreement_id: contr.commercial_agreement_id,
+          p_notes: `Aditivo assinado: ${updates.title || 'Sem título'}`
+        });
+        if (eapError) {
+          console.error('Erro ao versionar EAP ao assinar aditivo:', eapError);
+        }
+      }
+    }
+  }
+
   return supabase
     .from('contracts')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -483,7 +656,96 @@ export async function updateContract(contractId: string, updates: {
 }
 
 export async function deleteContract(contractId: string) {
-  return supabase.from('contracts').delete().eq('id', contractId)
+  const { data: contr } = await supabase
+    .from('contracts')
+    .select('commercial_agreement_id')
+    .eq('id', contractId)
+    .single();
+
+  const res = await supabase.from('contracts').delete().eq('id', contractId);
+
+  if (contr?.commercial_agreement_id) {
+    await supabase.from('commercial_agreements').delete().eq('id', contr.commercial_agreement_id);
+  }
+
+  return res;
+}
+
+export async function createAddendum(userId: string, data: {
+  title: string
+  project_id: string
+  description?: string
+  status?: string
+  total_value: number
+  estimated_hours?: number
+  effective_date?: string
+  expiry_date?: string
+  notes?: string
+}) {
+  // 1. Criar acordo comercial associado (tipo 'addendum')
+  const { data: agreement, error: agreementError } = await supabase
+    .from('commercial_agreements')
+    .insert({
+      user_id: userId,
+      project_id: data.project_id,
+      title: data.title,
+      description: data.description || null,
+      type: 'addendum',
+      status: data.status || 'draft',
+      total_value: data.total_value || 0,
+      estimated_hours: data.estimated_hours || null,
+      billing_model: 'fixed_price',
+      effective_date: data.effective_date || null,
+      expiry_date: data.expiry_date || null,
+      notes: data.notes || null,
+    })
+    .select()
+    .single();
+
+  if (agreementError) return { data: null, error: agreementError };
+
+  // 2. Criar contrato correspondente para anexar arquivos e gerenciar status
+  const { data: contract, error: contractError } = await supabase
+    .from('contracts')
+    .insert({
+      user_id: userId,
+      project_id: data.project_id,
+      commercial_agreement_id: agreement.id,
+      title: data.title,
+      description: data.description || null,
+      status: data.status || 'draft',
+      effective_date: data.effective_date || null,
+      expiry_date: data.expiry_date || null,
+      notes: data.notes || null,
+    })
+    .select()
+    .single();
+
+  if (contractError) return { data: null, error: contractError };
+
+  // 3. Se foi criado diretamente como assinado, acionar o versionamento
+  if (data.status === 'signed') {
+    const { error: eapError } = await supabase.rpc('fn_create_new_eap_version', {
+      p_project_id: data.project_id,
+      p_user_id: userId,
+      p_agreement_id: agreement.id,
+      p_notes: `Aditivo criado como Assinado: ${data.title}`
+    });
+    if (eapError) {
+      console.error('Erro ao versionar EAP:', eapError);
+    }
+  }
+
+  return { data: contract, error: null };
+}
+
+export async function createNewEapVersion(projectId: string, userId: string, agreementId: string, notes: string) {
+  return supabase.rpc('fn_create_new_eap_version', {
+    p_project_id: projectId,
+    p_user_id: userId,
+    p_agreement_id: agreementId,
+    p_notes: notes
+  });
 }
 
 // ============================================

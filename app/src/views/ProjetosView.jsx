@@ -641,12 +641,13 @@ function CommercialStepManager({ type, proj, currentUser, refreshProject }) {
 }
 
 // ── Dev (Development planning) Step Manager Component ──
-function DevStepManager({ proj, refreshProject }) {
+function DevStepManager({ proj, refreshProject, eapItems = [] }) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [newTaskDate, setNewTaskDate] = useState('');
   const [newTaskComplexity, setNewTaskComplexity] = useState('Média');
+  const [newTaskEapItemId, setNewTaskEapItemId] = useState('');
   const [savingTask, setSavingTask] = useState(false);
 
   // States to add checklist
@@ -674,6 +675,7 @@ function DevStepManager({ proj, refreshProject }) {
         description: newTaskDesc.trim(),
         due_date: newTaskDate || null,
         complexity: newTaskComplexity,
+        eap_item_id: newTaskEapItemId || null,
         status: 'todo',
         task_type: 'technical'
       });
@@ -683,6 +685,7 @@ function DevStepManager({ proj, refreshProject }) {
       setNewTaskDesc('');
       setNewTaskDate('');
       setNewTaskComplexity('Média');
+      setNewTaskEapItemId('');
       await refreshProject();
     } catch (err) {
       console.error('Erro ao criar tarefa:', err);
@@ -868,6 +871,23 @@ function DevStepManager({ proj, refreshProject }) {
                 />
               </div>
             </div>
+            {eapItems.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase mb-1">Item da EAP (Opcional)</label>
+                <select
+                  value={newTaskEapItemId}
+                  onChange={e => setNewTaskEapItemId(e.target.value)}
+                  className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-3 py-2 text-sm focus:outline-none text-warm-900"
+                >
+                  <option value="">Nenhum vínculo</option>
+                  {eapItems.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.codigo_estruturado} - {item.nome} ({item.tipo_item.replace('_', ' ')})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex justify-end pt-2">
               <Button type="submit" loading={savingTask}>Adicionar Tarefa</Button>
             </div>
@@ -903,9 +923,34 @@ function DevStepManager({ proj, refreshProject }) {
                         {task.complexity || 'Média'}
                       </span>
                     </span>
+                    {task.eap_item_id && (() => {
+                      const eapItem = eapItems.find(i => i.id === task.eap_item_id);
+                      return eapItem ? (
+                        <>
+                          <span className="text-warm-300">|</span>
+                          <span className="text-brand-650 font-semibold">
+                            EAP: {eapItem.codigo_estruturado} - {eapItem.nome}
+                          </span>
+                        </>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {eapItems.length > 0 && (
+                    <select
+                      value={task.eap_item_id || ''}
+                      onChange={e => handleTaskFieldChange(task.id, 'eap_item_id', e.target.value || null)}
+                      className="bg-warm-200 border border-warm-300 rounded px-2 py-1 text-xs focus:outline-none max-w-[150px] truncate text-warm-900"
+                    >
+                      <option value="">Sem EAP</option>
+                      {eapItems.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.codigo_estruturado} - {item.nome}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <select
                     value={task.complexity || 'Média'}
                     onChange={e => handleTaskFieldChange(task.id, 'complexity', e.target.value)}
@@ -1642,6 +1687,49 @@ export default function ProjetosView({
     setActiveStepId(stepNumber);
   }
 
+  // --- Carregamento de Itens da EAP para tarefas ---
+  const [eapItems, setEapItems] = useState([]);
+
+  useEffect(() => {
+    if (!proj?.id) {
+      setEapItems([]);
+      return;
+    }
+    
+    let active = true;
+    const fetchEapItems = async () => {
+      try {
+        const { data: eap } = await supabase
+          .from('eap')
+          .select('id, scope_versions!inner(status)')
+          .eq('project_id', proj.id)
+          .eq('scope_versions.status', 'active')
+          .maybeSingle();
+
+        if (!active) return;
+
+        if (eap) {
+          const { data: items, error } = await supabase
+            .from('eap_items')
+            .select('*')
+            .eq('eap_id', eap.id)
+            .order('codigo_estruturado', { ascending: true });
+
+          if (!error && active) {
+            setEapItems(items || []);
+          }
+        } else {
+          if (active) setEapItems([]);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar itens da EAP:', err);
+      }
+    };
+
+    fetchEapItems();
+    return () => { active = false; };
+  }, [proj?.id]);
+
   const refreshProject = async () => {
     if (!proj) return;
     const { data } = await supabase
@@ -2013,7 +2101,7 @@ export default function ProjetosView({
               )}
 
               {activeStepId === 5 && (
-                <DevStepManager proj={proj} refreshProject={refreshProject} />
+                <DevStepManager proj={proj} refreshProject={refreshProject} eapItems={eapItems} />
               )}
 
               {activeStepId === 6 && (
@@ -2065,6 +2153,14 @@ export default function ProjetosView({
                       return (
                         <Card key={`task-${item.id}`} className="p-4 hover:shadow-elevated transition-shadow cursor-move">
                           <p className="text-sm font-medium text-warm-850 mb-3 leading-snug">{item.title}</p>
+                          {item.eap_item_id && (() => {
+                            const eapItem = eapItems.find(i => i.id === item.eap_item_id);
+                            return eapItem ? (
+                              <div className="text-[10px] text-brand-650 font-bold bg-brand-50 border border-brand-100 rounded-md px-2 py-0.5 mb-3 inline-block">
+                                EAP: {eapItem.codigo_estruturado} - {eapItem.nome}
+                              </div>
+                            ) : null;
+                          })()}
                           <div className="flex justify-between items-center">
                             <Badge color="slate">{item.task_type || 'Tarefa'}</Badge>
                             <div className="flex gap-1">
