@@ -1569,7 +1569,7 @@ function FinalizationStepForm({ proj, onUpdateProject }) {
 
 export default function ProjetosView({
   projects, filter, onFilterChange, selectedProject, onSelectProject,
-  onDeclineProject, onArchiveProject, onAdvanceWorkflow, onUpdateTask,
+  onDeclineProject, onArchiveProject, onDeleteProject, onAdvanceWorkflow, onUpdateTask,
   onUpdateProject,
   // Checklist props
   onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
@@ -1807,6 +1807,7 @@ export default function ProjetosView({
             {proj.status === 'active' && stepNumber >= 7 && (
               <Button variant="secondary" className="h-9 text-xs px-3" icon={Archive} onClick={() => onArchiveProject(proj.id)}>Arquivar</Button>
             )}
+            <Button variant="danger" className="h-9 text-xs px-3" icon={Trash2} onClick={() => onDeleteProject(proj)}>Excluir</Button>
             {proj.status === 'active' && (
               <Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
                 {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
@@ -2364,6 +2365,12 @@ export default function ProjetosView({
                         Arquivar
                       </button>
                     )}
+                    <button
+                      title="Excluir permanentemente"
+                      className="text-warm-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                      onClick={e => { e.stopPropagation(); onDeleteProject(p); }}>
+                      <Trash2 size={12} />
+                    </button>
                     <span className="text-[11px] font-semibold text-brand-500 group-hover:underline flex items-center gap-1">
                       Ver <ArrowRight size={11} />
                     </span>

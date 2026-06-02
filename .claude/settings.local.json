@@ -30,7 +30,9 @@
       "Bash(docker exec *)",
       "Bash(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\" -Name)",
       "Bash(Find \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\" -name \"globals.css\" -o -name \"*.css\" -path \"*/app/*\" -not -path \"*/node_modules/*\")",
-      "PowerShell(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\\\\src\" -File -Recurse | Where-Object { $_.Name -match \"theme|color|css\" } | Select-Object FullName)"
+      "PowerShell(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\\\\src\" -File -Recurse | Where-Object { $_.Name -match \"theme|color|css\" } | Select-Object FullName)",
+      "Bash(cd /d/Workspace/GitHub/Freeela/app && find . -maxdepth 3 -type d | grep -v node_modules | head -20)",
+      "Read(//d/d/Workspace/GitHub/Freeela/**)"
     ]
   }
 }

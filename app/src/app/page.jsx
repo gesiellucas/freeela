@@ -61,6 +61,7 @@ import {
 declineProposal,
   declineProject as declineProjectAPI,
   archiveProject as archiveProjectAPI,
+  deleteProject as deleteProjectAPI,
   getProposals,
   createProposal,
   updateProposal,
@@ -345,6 +346,8 @@ export default function App() {
   const [leadToDecline, setLeadToDecline] = useState(null);
   const [isDeclineProjectModalOpen, setIsDeclineProjectModalOpen] = useState(false);
   const [projectToDecline, setProjectToDecline] = useState(null);
+  const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
 
   // Form States
@@ -706,6 +709,32 @@ export default function App() {
     setIsDeclineProjectModalOpen(true);
   };
 
+  const openDeleteProjectModal = (project) => {
+    setProjectToDelete(project);
+    setIsDeleteProjectModalOpen(true);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    try {
+      const { error } = await deleteProjectAPI(projectToDelete.id);
+
+      if (error) throw error;
+
+      setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
+      if (selectedProject?.id === projectToDelete.id) {
+        setSelectedProject(null);
+      }
+
+      setIsDeleteProjectModalOpen(false);
+      setProjectToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir projeto:', err);
+      alert('Erro ao excluir projeto');
+    }
+  };
+
   const updateTaskStatus = async (projectId, taskId, newStatus) => {
     try {
       const { error } = await updateTaskStatusAPI(taskId, newStatus);
@@ -994,6 +1023,7 @@ export default function App() {
                   onCreateProjectDirectly={handleCreateProjectDirectly}
                   onDeclineProject={openDeclineProjectModal}
                   onArchiveProject={handleArchiveProject}
+                  onDeleteProject={openDeleteProjectModal}
                   onAdvanceWorkflow={handleAdvanceWorkflow}
                   onUpdateTask={updateTaskStatus}
                   onUpdateProject={handleUpdateProject}
@@ -1139,6 +1169,38 @@ export default function App() {
           <p className="text-xs text-warm-500">
             Registrar o motivo ajuda a entender padrões de leads perdidos.
           </p>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isDeleteProjectModalOpen}
+        onClose={() => {
+          setIsDeleteProjectModalOpen(false);
+          setProjectToDelete(null);
+        }}
+        title="Excluir Projeto Permanentemente"
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => {
+              setIsDeleteProjectModalOpen(false);
+              setProjectToDelete(null);
+            }}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDeleteProject}>Excluir Permanentemente</Button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="bg-red-950/20 border border-red-900/40 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <Trash2 className="text-red-400 flex-shrink-0 mt-0.5" size={18} />
+              <div>
+                <p className="text-sm font-semibold text-red-300">Esta ação é irreversível</p>
+                <p className="text-xs text-red-500 mt-1">
+                  O projeto <strong>{projectToDelete?.title}</strong> e todos os seus dados (tarefas, pagamentos, documentos, checklists) serão excluídos permanentemente.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
 

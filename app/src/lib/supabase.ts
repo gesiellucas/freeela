@@ -227,6 +227,13 @@ export async function archiveProject(projectId: string) {
     .eq('id', projectId)
 }
 
+export async function deleteProject(projectId: string) {
+  return supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId)
+}
+
 export async function advanceProjectWorkflow(projectId: string) {
   const workflowOrder = [
     'initial_contact', 'understanding', 'proposal',
