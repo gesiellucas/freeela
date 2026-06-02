@@ -1575,10 +1575,16 @@ export default function ProjetosView({
   onCreateChecklist, onUpdateChecklist, onDeleteChecklist, onUpdateChecklistStatus,
   onAddChecklistItem, onToggleChecklistItem, onDeleteChecklistItem,
   onCreateProjectDirectly,
+  onViewClient,
+  clients = [],
 }) {
   const [subTab, setSubTab] = useState('workflow');
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({ clientName: '', clientEmail: '', title: '', value: '' });
+  const [clientMode, setClientMode] = useState('existing'); // 'existing' | 'new'
+  const [clientSearch, setClientSearch] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(null);
   useEffect(() => {
@@ -1661,16 +1667,25 @@ export default function ProjetosView({
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
-    if (onCreateProjectDirectly) {
-      await onCreateProjectDirectly({
-        clientName: newProject.clientName,
-        clientEmail: newProject.clientEmail,
-        title: newProject.title,
-        value: parseFloat(newProject.value) || 0,
-      });
-      setIsNewProjectModalOpen(false);
-      setNewProject({ clientName: '', clientEmail: '', title: '', value: '' });
+    if (!onCreateProjectDirectly) return;
+
+    const payload = { title: newProject.title, value: parseFloat(newProject.value) || 0 };
+
+    if (clientMode === 'existing') {
+      if (!selectedClientId) return;
+      payload.clientId = selectedClientId;
+    } else {
+      if (!newProject.clientName.trim()) return;
+      payload.clientName = newProject.clientName;
+      payload.clientEmail = newProject.clientEmail;
     }
+
+    await onCreateProjectDirectly(payload);
+    setIsNewProjectModalOpen(false);
+    setNewProject({ clientName: '', clientEmail: '', title: '', value: '' });
+    setClientMode('existing');
+    setClientSearch('');
+    setSelectedClientId('');
   };
 
   const proj = selectedProject;
@@ -2058,6 +2073,16 @@ export default function ProjetosView({
                             <div className="flex justify-between"><span className="font-medium">E-mail:</span> <a href={`mailto:${proj.client?.email}`} className="text-brand-500 hover:underline">{proj.client?.email || 'Não informado'}</a></div>
                             <div className="flex justify-between"><span className="font-medium">CPF/CNPJ:</span> <span className="text-warm-900">{proj.client?.cpf_cnpj || 'Não informado'}</span></div>
                           </div>
+                          {onViewClient && (
+                            <div className="pt-3 border-t border-warm-200/40 flex justify-end">
+                              <button
+                                onClick={() => onViewClient(proj)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-brand-500 hover:text-brand-400 transition-colors"
+                              >
+                                Ver mais sobre este cliente <ExternalLink size={11} />
+                              </button>
+                            </div>
+                          )}
                         </Card>
                         <Card className="p-5 space-y-4">
                           <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
@@ -2394,23 +2419,91 @@ export default function ProjetosView({
             </div>
             <form onSubmit={handleCreateProject}>
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Título */}
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Nome do Projeto</label>
                   <input type="text" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="Ex: Criação de E-commerce" value={newProject.title} onChange={e => setNewProject({ ...newProject, title: e.target.value })} required />
                 </div>
+
+                {/* Toggle cliente */}
                 <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Nome do Cliente / Empresa</label>
-                  <input type="text" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="Ex: Acme Corp" value={newProject.clientName} onChange={e => setNewProject({ ...newProject, clientName: e.target.value })} required />
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Cliente</label>
+                  <div className="flex rounded-xl bg-warm-200 p-1 gap-1 mb-3">
+                    {[{ id: 'existing', label: 'Cliente Existente' }, { id: 'new', label: 'Novo Cliente' }].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => { setClientMode(opt.id); setClientSearch(''); setSelectedClientId(''); }}
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all
+                          ${clientMode === opt.id ? 'bg-warm-50 text-warm-900 shadow-sm' : 'text-warm-500 hover:text-warm-700'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {clientMode === 'existing' ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder={clients.length === 0 ? 'Nenhum cliente cadastrado' : 'Buscar cliente pelo nome...'}
+                        disabled={clients.length === 0}
+                        value={clientSearch}
+                        onChange={e => { setClientSearch(e.target.value); setSelectedClientId(''); setShowClientDropdown(true); }}
+                        onFocus={() => setShowClientDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowClientDropdown(false), 150)}
+                        className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      {showClientDropdown && clients.length > 0 && (
+                        <div className="absolute z-20 w-full mt-1 bg-warm-50 rounded-xl border border-warm-300 shadow-elevated overflow-hidden">
+                          {clients
+                            .filter(c => {
+                              const q = clientSearch.toLowerCase();
+                              return !q || c.name.toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q);
+                            })
+                            .slice(0, 8)
+                            .map(c => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onMouseDown={() => {
+                                  setSelectedClientId(c.id);
+                                  setClientSearch(c.company ? `${c.name} — ${c.company}` : c.name);
+                                  setShowClientDropdown(false);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-warm-200 transition-colors"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-brand-100 flex items-center justify-center text-xs font-bold text-brand-700 flex-shrink-0">
+                                  {c.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-warm-900 truncate">{c.name}</p>
+                                  {c.company && <p className="text-[11px] text-warm-500 truncate">{c.company}</p>}
+                                </div>
+                              </button>
+                            ))}
+                          {clients.filter(c => {
+                            const q = clientSearch.toLowerCase();
+                            return !q || c.name.toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q);
+                          }).length === 0 && (
+                            <p className="px-4 py-3 text-sm text-warm-400 italic">Nenhum cliente encontrado</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input type="text" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="Nome do cliente / empresa" value={newProject.clientName} onChange={e => setNewProject({ ...newProject, clientName: e.target.value })} required={clientMode === 'new'} />
+                      <input type="email" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="E-mail (opcional)" value={newProject.clientEmail} onChange={e => setNewProject({ ...newProject, clientEmail: e.target.value })} />
+                    </div>
+                  )}
                 </div>
+
+                {/* Valor */}
                 <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">E-mail do Cliente (Opcional)</label>
-                  <input type="email" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="exemplo@email.com" value={newProject.clientEmail} onChange={e => setNewProject({ ...newProject, clientEmail: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Valor Estimado do Projeto (R$)</label>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 block mb-2">Valor Estimado (R$)</label>
                   <input type="number" className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-3 text-sm text-warm-800 placeholder-warm-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-warm-500 transition-all" placeholder="Ex: 5000" value={newProject.value} onChange={e => setNewProject({ ...newProject, value: e.target.value })} />
                 </div>
-                <p className="text-xs text-warm-500 mt-2">Um novo cliente será automaticamente cadastrado, se necessário, e o projeto pulará a fase de lead.</p>
               </div>
               <div className="px-6 py-4 border-t border-warm-300/60 flex justify-end gap-3 bg-warm-100/50">
                 <Button variant="outline" type="button" onClick={() => setIsNewProjectModalOpen(false)}>Cancelar</Button>

@@ -85,6 +85,10 @@ declineProposal,
   createChecklistItem,
   toggleChecklistItem,
   deleteChecklistItem,
+  getClients,
+  createNewClient as createClientAPI,
+  updateClient as updateClientAPI,
+  deleteClient as deleteClientAPI,
 } from '../lib/supabase';
 
 import PainelView from '../views/PainelView';
@@ -98,6 +102,7 @@ import PomodoroView from '../views/PomodoroView';
 import OverviewView from '../views/OverviewView';
 import EapView from '../views/EapView';
 import CronogramaView from '../views/CronogramaView';
+import ClientesView from '../views/ClientesView';
 
 // --- Constantes e Templates ---
 
@@ -330,6 +335,8 @@ export default function App() {
   const [allLeads, setAllLeads] = useState([]);
   const [checklists, setChecklists] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [clientToView, setClientToView] = useState(null);
   const [proposals, setProposals] = useState([]);
   const [contracts, setContracts] = useState([]);
   const [fiscalNotes, setFiscalNotes] = useState([]);
@@ -413,13 +420,14 @@ export default function App() {
 
     setDataLoading(true);
     try {
-      const [leadsRes, projectsRes, proposalsRes, contractsRes, fiscalRes, checklistsRes] = await Promise.all([
+      const [leadsRes, projectsRes, proposalsRes, contractsRes, fiscalRes, checklistsRes, clientsRes] = await Promise.all([
         getLeads(userId),
         getProjects(userId, 'all'),
         getProposals(userId),
         getContracts(userId),
         getFiscalNotes(userId),
         getChecklists(userId),
+        getClients(userId),
       ]);
 
       if (leadsRes.data) {
@@ -431,6 +439,7 @@ export default function App() {
       if (contractsRes.data) setContracts(contractsRes.data);
       if (fiscalRes.data) setFiscalNotes(fiscalRes.data);
       if (checklistsRes.data) setChecklists(checklistsRes.data);
+      if (clientsRes.data) setClients(clientsRes.data);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     } finally {
@@ -571,6 +580,11 @@ export default function App() {
     }
     if (!newLead.email.trim()) {
       alert('Por favor, informe o e-mail de contato.');
+      return;
+    }
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    if (!emailRegex.test(newLead.email.trim())) {
+      alert('E-mail inválido. Use o formato: nome@empresa.com');
       return;
     }
     if (!newLead.demand.trim()) {
@@ -808,6 +822,44 @@ export default function App() {
     }
   };
 
+  const handleCreateClient = async (clientData) => {
+    if (!userId) return { data: null, error: 'No user' };
+    const result = await createClientAPI(userId, clientData);
+    if (!result.error && result.data) {
+      setClients(prev => [result.data, ...prev]);
+    }
+    return result;
+  };
+
+  const handleUpdateClient = async (clientId, updates) => {
+    const result = await updateClientAPI(clientId, updates);
+    if (!result.error) {
+      const updated = result.data || { id: clientId, ...updates };
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...updated } : c));
+    }
+    return result;
+  };
+
+  const handleDeleteClient = async (clientId) => {
+    await deleteClientAPI(clientId);
+    setClients(prev => prev.filter(c => c.id !== clientId));
+    if (clientToView?.id === clientId) setClientToView(null);
+  };
+
+  const handleViewClient = (project) => {
+    const clientId = project.client_id || project.client?.id;
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setClientToView(client);
+      setActiveTab('clientes');
+    }
+  };
+
+  const handleViewProjectFromClient = (project) => {
+    setSelectedProject(project);
+    setActiveTab('projects');
+  };
+
   const handleLogout = async () => {
     await signOut();
     setUser(null);
@@ -816,6 +868,8 @@ export default function App() {
     setAllLeads([]);
     setChecklists([]);
     setProjects([]);
+    setClients([]);
+    setClientToView(null);
     setProposals([]);
     setContracts([]);
     setFiscalNotes([]);
@@ -862,6 +916,7 @@ export default function App() {
             { id: 'painel', label: 'Painel', icon: LayoutDashboard },
             { id: 'overview', label: 'Overview', icon: LayoutGrid },
             { id: 'leads', label: 'Leads', icon: Users },
+            { id: 'clientes', label: 'Clientes', icon: Building2 },
             { id: 'projects', label: 'Projetos', icon: Briefcase },
             { id: 'fiscal', label: 'Área Fiscal', icon: Receipt },
             { id: 'finances', label: 'Financeiro', icon: DollarSign },
@@ -1013,6 +1068,16 @@ export default function App() {
                   onDeclineLead={openDeclineModal}
                 />
               )}
+              {activeTab === 'clientes' && (
+                <ClientesView
+                  clients={clients}
+                  onCreateClient={handleCreateClient}
+                  onUpdateClient={handleUpdateClient}
+                  onDeleteClient={handleDeleteClient}
+                  onViewProject={handleViewProjectFromClient}
+                  initialClient={clientToView}
+                />
+              )}
               {activeTab === 'projects' && (
                 <ProjetosView
                   projects={projects}
@@ -1034,6 +1099,8 @@ export default function App() {
                   onAddChecklistItem={handleAddChecklistItem}
                   onToggleChecklistItem={handleToggleChecklistItem}
                   onDeleteChecklistItem={handleDeleteChecklistItem}
+                  onViewClient={handleViewClient}
+                  clients={clients}
                 />
               )}
               {activeTab === 'fiscal' && (

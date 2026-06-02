@@ -255,30 +255,33 @@ export async function advanceProjectWorkflow(projectId: string) {
 }
 
 export async function createProjectDirectly(userId: string, data: {
-  clientName: string
+  clientId?: string
+  clientName?: string
   clientEmail?: string
   title: string
   value: number
 }) {
-  const email = data.clientEmail || `contato@${data.clientName.toLowerCase().replace(/\s+/g, '')}.com`
-  
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .insert({
-      user_id: userId,
-      name: data.clientName,
-      email: email,
-    })
-    .select()
-    .single()
+  let clientId = data.clientId
 
-  if (clientError || !client) return { data: null, error: clientError }
+  if (!clientId) {
+    const name = data.clientName || 'Cliente'
+    const email = data.clientEmail || `contato@${name.toLowerCase().replace(/\s+/g, '')}.com`
+
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .insert({ user_id: userId, name, email })
+      .select()
+      .single()
+
+    if (clientError || !client) return { data: null, error: clientError }
+    clientId = client.id
+  }
 
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .insert({
       user_id: userId,
-      client_id: client.id,
+      client_id: clientId,
       title: data.title,
       value: data.value || 0,
       current_step: 'initial_contact',
@@ -289,6 +292,54 @@ export async function createProjectDirectly(userId: string, data: {
   if (projectError) return { data: null, error: projectError }
 
   return { data: project, error: null }
+}
+
+// ============================================
+// CLIENTES
+// ============================================
+
+export async function getClients(userId: string) {
+  return supabase
+    .from('clients')
+    .select('*, projects(id, title, status, current_step, value, created_at)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+}
+
+export async function createNewClient(userId: string, data: {
+  name: string
+  email: string
+  phone?: string
+  company?: string
+  website?: string
+  cpf_cnpj?: string
+  contact_person?: string
+  contact_position?: string
+  address?: string
+  city?: string
+  state?: string
+  zip_code?: string
+  country?: string
+  notes?: string
+}) {
+  return supabase
+    .from('clients')
+    .insert({ user_id: userId, ...data })
+    .select('*, projects(id, title, status, current_step, value, created_at)')
+    .single()
+}
+
+export async function updateClient(clientId: string, updates: any) {
+  return supabase
+    .from('clients')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', clientId)
+    .select('*, projects(id, title, status, current_step, value, created_at)')
+    .single()
+}
+
+export async function deleteClient(clientId: string) {
+  return supabase.from('clients').delete().eq('id', clientId)
 }
 
 // ============================================
