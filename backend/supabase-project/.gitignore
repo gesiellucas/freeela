@@ -1,3 +1,4 @@
 .env
 volumes/storage
 volumes/db/data
+volumes/db/config
