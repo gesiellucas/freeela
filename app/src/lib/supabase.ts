@@ -185,7 +185,7 @@ export async function getProjects(
 ) {
   let q = supabase
     .from('projects')
-    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*))')
+    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), service_orders(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -197,7 +197,7 @@ export async function getProjects(
 export async function getProjectById(projectId: string) {
   return supabase
     .from('projects')
-    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*)')
+    .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*), service_orders(*)')
     .eq('id', projectId)
     .single()
 }

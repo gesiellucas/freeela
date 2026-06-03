@@ -5,9 +5,10 @@ import {
   DollarSign, Archive, ArrowRight, Plus, Trash2, Pencil,
   ChevronUp, Minus, ArrowDown, Check, Square, CheckSquare,
   FileText, FileSignature, Receipt, UploadCloud, Download, ExternalLink,
-  Info,
+  Info, ClipboardList,
 } from 'lucide-react';
 import { supabase, uploadFile } from '../lib/supabase';
+import OrdemDeServicoTab from './OrdemDeServicoTab';
 
 const WORKFLOW_STEPS = [
   { id: 1, label: 'Contato',      key: 'initial_contact', icon: <Users size={14} />,       desc: 'Registro do lead e e-mail de boas-vindas' },
@@ -1749,7 +1750,7 @@ export default function ProjetosView({
     if (!proj) return;
     const { data } = await supabase
       .from('projects')
-      .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*)')
+      .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*), service_orders(*)')
       .eq('id', proj.id)
       .single();
     if (data) {
@@ -1832,19 +1833,25 @@ export default function ProjetosView({
         </div>
 
         {/* Sub-tabs */}
-        <div className="flex border-b border-warm-300 gap-1">
+        <div className="flex border-b border-warm-300 gap-1 overflow-x-auto">
           <button onClick={handleBack}
-            className="pb-3 px-3 text-sm text-warm-500 hover:text-warm-650 border-b-2 border-transparent transition-all font-medium">
+            className="pb-3 px-3 text-sm text-warm-500 hover:text-warm-650 border-b-2 border-transparent transition-all font-medium whitespace-nowrap flex-shrink-0">
             ← Projetos
           </button>
-          {['workflow', 'kanban', 'financeiro'].map(tab => (
-            <button key={tab} onClick={() => setSubTab(tab)}
-              className={`pb-3 px-4 text-sm font-medium transition-all border-b-2 capitalize
-                ${subTab === tab
+          {[
+            { key: 'workflow',          label: 'Workflow' },
+            { key: 'ordem-de-servico',  label: 'Ordem de Serviço', icon: ClipboardList },
+            { key: 'kanban',            label: 'Kanban' },
+            { key: 'financeiro',        label: 'Financeiro' },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setSubTab(tab.key)}
+              className={`pb-3 px-4 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex-shrink-0 flex items-center gap-1.5
+                ${subTab === tab.key
                   ? 'border-brand-500 text-warm-900 font-semibold'
                   : 'border-transparent text-warm-500 hover:text-warm-650'
                 }`}>
-              {tab}
+              {tab.icon && <tab.icon size={13} />}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -2138,6 +2145,13 @@ export default function ProjetosView({
                 <FinalizationStepForm proj={proj} onUpdateProject={onUpdateProject} />
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── ORDEM DE SERVIÇO TAB ── */}
+        {subTab === 'ordem-de-servico' && (
+          <div className="py-2">
+            <OrdemDeServicoTab proj={proj} refreshProject={refreshProject} />
           </div>
         )}
 

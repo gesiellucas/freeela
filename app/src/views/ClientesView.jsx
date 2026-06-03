@@ -176,7 +176,11 @@ export default function ClientesView({
     setCreating(true);
     try {
       const { data, error } = await onCreateClient(createForm);
-      if (!error && data) {
+      if (error) {
+        alert('Erro ao criar cliente: ' + (error.message || error));
+        return;
+      }
+      if (data) {
         setSelectedClient(data);
         setActiveDetailTab('dados');
       }

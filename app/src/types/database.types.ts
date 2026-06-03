@@ -32,7 +32,9 @@ export type WorkflowStep =
   | 'payment'
   | 'finalization'
 
-export type TaskStatus = 'todo' | 'doing' | 'done'
+export type TaskStatus = 'todo' | 'doing' | 'waiting' | 'done'
+
+export type ServiceOrderStatus = 'draft' | 'pending' | 'approved' | 'declined'
 
 export type TaskType =
   | 'technical'
@@ -84,6 +86,11 @@ export interface Database {
         Insert: TaskInsert
         Update: TaskUpdate
       }
+      service_orders: {
+        Row: ServiceOrder
+        Insert: ServiceOrderInsert
+        Update: ServiceOrderUpdate
+      }
       payments: {
         Row: Payment
         Insert: PaymentInsert
@@ -121,6 +128,7 @@ export interface Database {
       task_type: TaskType
       payment_status: PaymentStatus
       document_type: DocumentType
+      service_order_status: ServiceOrderStatus
     }
   }
 }
@@ -359,6 +367,7 @@ export interface Task {
   id: string
   project_id: string
   user_id: string
+  service_order_id?: string | null
   title: string
   description?: string | null
   status: TaskStatus
@@ -368,6 +377,9 @@ export interface Task {
   due_date?: string | null
   estimated_hours?: number | null
   actual_hours?: number | null
+  estimated_cost?: number | null
+  difficulty?: string | null
+  development_stack?: string | null
   parent_task_id?: string | null
   tags?: string[] | null
   attachments?: Json
@@ -381,6 +393,7 @@ export interface TaskInsert {
   id?: string
   project_id: string
   user_id: string
+  service_order_id?: string | null
   title: string
   description?: string | null
   status?: TaskStatus
@@ -390,6 +403,9 @@ export interface TaskInsert {
   due_date?: string | null
   estimated_hours?: number | null
   actual_hours?: number | null
+  estimated_cost?: number | null
+  difficulty?: string | null
+  development_stack?: string | null
   parent_task_id?: string | null
   tags?: string[] | null
   attachments?: Json
@@ -400,6 +416,7 @@ export interface TaskInsert {
 }
 
 export interface TaskUpdate {
+  service_order_id?: string | null
   title?: string
   description?: string | null
   status?: TaskStatus
@@ -409,12 +426,79 @@ export interface TaskUpdate {
   due_date?: string | null
   estimated_hours?: number | null
   actual_hours?: number | null
+  estimated_cost?: number | null
+  difficulty?: string | null
+  development_stack?: string | null
   parent_task_id?: string | null
   tags?: string[] | null
   attachments?: Json
   metadata?: Json
   updated_at?: string
   completed_at?: string | null
+}
+
+export interface ServiceOrder {
+  id: string
+  project_id: string
+  user_id: string
+  commercial_document_id?: string | null
+  title: string
+  description?: string | null
+  scope_summary?: string | null
+  planned_start_date?: string | null
+  planned_end_date?: string | null
+  estimated_hours?: number | null
+  priority: string
+  planned_amount: number
+  status: ServiceOrderStatus
+  progress_percent: number
+  approved_at?: string | null
+  closed_at?: string | null
+  customer_notes?: string | null
+  internal_notes?: string | null
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ServiceOrderInsert {
+  id?: string
+  project_id: string
+  user_id: string
+  commercial_document_id?: string | null
+  title: string
+  description?: string | null
+  scope_summary?: string | null
+  planned_start_date?: string | null
+  planned_end_date?: string | null
+  estimated_hours?: number | null
+  priority?: string
+  planned_amount?: number
+  status?: ServiceOrderStatus
+  progress_percent?: number
+  customer_notes?: string | null
+  internal_notes?: string | null
+  version?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ServiceOrderUpdate {
+  commercial_document_id?: string | null
+  title?: string
+  description?: string | null
+  scope_summary?: string | null
+  planned_start_date?: string | null
+  planned_end_date?: string | null
+  estimated_hours?: number | null
+  priority?: string
+  planned_amount?: number
+  status?: ServiceOrderStatus
+  progress_percent?: number
+  customer_notes?: string | null
+  internal_notes?: string | null
+  version?: number
+  updated_at?: string
 }
 
 export interface Payment {
