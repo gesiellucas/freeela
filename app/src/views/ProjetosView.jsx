@@ -5,7 +5,7 @@ import {
   DollarSign, Archive, ArrowRight, Plus, Trash2, Pencil,
   ChevronUp, Minus, ArrowDown, Check, Square, CheckSquare,
   FileText, FileSignature, Receipt, UploadCloud, Download, ExternalLink,
-  Info, ClipboardList,
+  Info, ClipboardList, LayoutGrid, MapPin, StickyNote,
 } from 'lucide-react';
 import { supabase, uploadFile } from '../lib/supabase';
 import OrdemDeServicoTab from './OrdemDeServicoTab';
@@ -1077,13 +1077,24 @@ export default function ProjetosView({
   onViewClient,
   clients = [],
 }) {
-  const [subTab, setSubTab] = useState('workflow');
+  const [subTab, setSubTab] = useState('informacoes');
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({ clientName: '', clientEmail: '', title: '', value: '' });
   const [clientMode, setClientMode] = useState('existing'); // 'existing' | 'new'
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+
+  const [addingNote, setAddingNote] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
+  const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [newPayDesc, setNewPayDesc] = useState('');
+  const [newPayAmount, setNewPayAmount] = useState('');
+  const [newPayDueDate, setNewPayDueDate] = useState('');
+  const [newPayObs, setNewPayObs] = useState('');
+  const [savingPay, setSavingPay] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(null);
   useEffect(() => {
@@ -1164,6 +1175,49 @@ export default function ProjetosView({
     }
   };
 
+  const handleSaveNote = async () => {
+    setSavingNote(true);
+    try {
+      const clientId = proj?.client_id || proj?.client?.id;
+      if (!clientId) throw new Error('Cliente não encontrado');
+      const { error } = await supabase.from('clients').update({ notes: noteText.trim() }).eq('id', clientId);
+      if (error) throw error;
+      if (onUpdateProject) await onUpdateProject(proj.id, { updated_at: new Date().toISOString() });
+      setAddingNote(false);
+      await refreshProject();
+    } catch (err) {
+      alert('Erro ao salvar observação: ' + (err.message || err));
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleCreatePayment = async (e) => {
+    e.preventDefault();
+    if (!newPayDesc.trim() || !newPayAmount) return;
+    setSavingPay(true);
+    try {
+      const { error } = await supabase.from('payments').insert({
+        user_id: proj.user_id,
+        project_id: proj.id,
+        description: newPayDesc.trim(),
+        amount: parseFloat(newPayAmount) || 0,
+        due_date: newPayDueDate || null,
+        status: 'pending',
+        metadata: { observation: newPayObs.trim() || null },
+      });
+      if (error) throw error;
+      setAddPaymentOpen(false);
+      setNewPayDesc(''); setNewPayAmount(''); setNewPayDueDate(''); setNewPayObs('');
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao criar lançamento:', err);
+      alert('Erro ao criar lançamento');
+    } finally {
+      setSavingPay(false);
+    }
+  };
+
   const handleCreateProject = async (e) => {
     e.preventDefault();
     if (!onCreateProjectDirectly) return;
@@ -1192,14 +1246,6 @@ export default function ProjetosView({
   const tasks      = proj ? (proj.tasks || []) : [];
   const checklists = proj ? (proj.checklists || []) : [];
   const payments   = proj ? (proj.payments || []) : [];
-
-  const [activeStepId, setActiveStepId] = useState(null);
-  const currentProjId = proj?.id;
-  const [lastProjId, setLastProjId] = useState(null);
-  if (currentProjId !== lastProjId) {
-    setLastProjId(currentProjId);
-    setActiveStepId(stepNumber);
-  }
 
   // --- Carregamento de Itens da EAP para tarefas ---
   const [eapItems, setEapItems] = useState([]);
@@ -1266,7 +1312,7 @@ export default function ProjetosView({
 
   const handleOpenProject = (p) => {
     onSelectProject(p);
-    setSubTab('workflow');
+    setSubTab('informacoes');
   };
 
   const handleBack = () => onSelectProject(null);
@@ -1322,25 +1368,17 @@ export default function ProjetosView({
               <Button variant="secondary" className="h-9 text-xs px-3" icon={Archive} onClick={() => onArchiveProject(proj.id)}>Arquivar</Button>
             )}
             <Button variant="danger" className="h-9 text-xs px-3" icon={Trash2} onClick={() => onDeleteProject(proj)}>Excluir</Button>
-            {proj.status === 'active' && (
-              <Button variant="primary" className="h-9 text-xs px-3" onClick={() => onAdvanceWorkflow(proj.id)} disabled={stepNumber >= 7}>
-                {stepNumber >= 7 ? 'Finalizado' : 'Avançar Etapa'}
-              </Button>
-            )}
           </div>
         </div>
 
         {/* Sub-tabs */}
         <div className="flex border-b border-warm-300 gap-1 overflow-x-auto">
-          <button onClick={handleBack}
-            className="pb-3 px-3 text-sm text-warm-500 hover:text-warm-650 border-b-2 border-transparent transition-all font-medium whitespace-nowrap flex-shrink-0">
-            ← Projetos
-          </button>
           {[
-            { key: 'workflow',          label: 'Workflow' },
-            { key: 'ordem-de-servico',  label: 'Ordem de Serviço', icon: ClipboardList },
-            { key: 'kanban',            label: 'Kanban' },
-            { key: 'financeiro',        label: 'Financeiro' },
+            { key: 'informacoes',      label: 'Informações',      icon: Info },
+            { key: 'ordem-de-servico', label: 'Ordem de Serviço', icon: ClipboardList },
+            { key: 'kanban',           label: 'Kanban',           icon: LayoutGrid },
+            { key: 'financeiro',       label: 'Financeiro',       icon: DollarSign },
+            { key: 'acordo-comercial', label: 'Acordo Comercial', icon: FileSignature },
           ].map(tab => (
             <button key={tab.key} onClick={() => setSubTab(tab.key)}
               className={`pb-3 px-4 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex-shrink-0 flex items-center gap-1.5
@@ -1348,296 +1386,195 @@ export default function ProjetosView({
                   ? 'border-brand-500 text-warm-900 font-semibold'
                   : 'border-transparent text-warm-500 hover:text-warm-650'
                 }`}>
-              {tab.icon && <tab.icon size={13} />}
+              <tab.icon size={13} />
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* ── WORKFLOW TAB ── */}
-        {subTab === 'workflow' && (
-          <div className="space-y-8 py-2">
-            {/* Timeline steps */}
-            <div className="relative">
-              <div className="absolute top-5 left-0 right-0 h-px bg-warm-250 z-0" />
-              <div className="absolute top-5 left-0 h-px bg-brand-500 z-0 transition-all duration-700" style={{ width: `${((stepNumber - 1) / 6) * 100}%` }} />
-              <div className="relative z-10 flex justify-between">
-                {WORKFLOW_STEPS.map(s => {
-                  const isActive = activeStepId === s.id;
-                  const isCurrent = stepNumber === s.id;
-                  const isDone   = stepNumber > s.id;
-                  return (
-                    <div key={s.id} className="flex flex-col items-center gap-3 cursor-pointer" style={{ width: '14.28%' }} onClick={() => setActiveStepId(s.id)}>
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
-                        ${isActive ? 'bg-brand-500 text-warm-900 shadow-brand scale-110 ring-4 ring-brand-100' :
-                          isDone   ? 'bg-emerald-500 text-warm-900' :
-                                     'bg-warm-200 border-2 border-warm-400 text-warm-500'}`}>
-                        {isDone ? <CheckCircle2 size={16} /> : s.icon}
+        {/* ── INFORMAÇÕES TAB ── */}
+        {subTab === 'informacoes' && (
+          <div className="space-y-6 py-2">
+            {editingContact && (
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingContact(false)}>Cancelar</Button>
+                <Button variant="primary" onClick={handleSaveContact} loading={savingContact}>Salvar Contato</Button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {editingContact ? (
+                <>
+                  <Card className="p-5 space-y-4">
+                    <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                      <Users size={15} />
+                      Editar Dados de Contato
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">Nome do Cliente *</label>
+                        <input type="text" value={contactForm.name} onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30" required />
                       </div>
-                      <p className={`text-[9px] font-bold uppercase tracking-wider text-center leading-tight
-                        ${isActive ? 'text-brand-650' :
-                          isDone ? 'text-emerald-600' : 'text-warm-500'}`}>
-                        {s.label}
-                      </p>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">Empresa</label>
+                        <input type="text" value={contactForm.company} onChange={e => setContactForm({ ...contactForm, company: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-warm-500">Contato Principal</label>
+                          <input type="text" value={contactForm.contact_person} onChange={e => setContactForm({ ...contactForm, contact_person: e.target.value })}
+                            className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="Nome" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-warm-500">Cargo</label>
+                          <input type="text" value={contactForm.contact_position} onChange={e => setContactForm({ ...contactForm, contact_position: e.target.value })}
+                            className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="Cargo" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">Telefone</label>
+                        <input type="text" value={contactForm.phone} onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="(00) 00000-0000" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">E-mail</label>
+                        <input type="email" value={contactForm.email} onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="email@exemplo.com" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">CPF/CNPJ</label>
+                        <input type="text" value={contactForm.cpf_cnpj} onChange={e => setContactForm({ ...contactForm, cpf_cnpj: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="00.000.000/0001-00" />
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {/* Step Title Header */}
-              <div className="bg-warm-200/50 p-4 rounded-2xl border border-warm-300/40 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-warm-900">Etapa {activeStepId}: {WORKFLOW_STEPS[activeStepId - 1]?.label}</h4>
-                  <p className="text-xs text-warm-500">{WORKFLOW_STEPS[activeStepId - 1]?.desc}</p>
-                </div>
-                <div className="flex gap-2">
-                  {activeStepId === 1 && (
-                    editingContact ? (
-                      <>
-                        <Button variant="outline" className="py-1.5 px-3 text-xs" onClick={() => setEditingContact(false)}>
-                          Cancelar
-                        </Button>
-                        <Button variant="primary" className="py-1.5 px-3 text-xs" onClick={handleSaveContact} loading={savingContact}>
-                          Salvar Contato
-                        </Button>
-                      </>
-                    ) : (
-                      <Button variant="secondary" className="py-1.5 px-3 text-xs" onClick={handleStartEditContact}>
-                        Editar Contato
+                  </Card>
+                  <Card className="p-5 space-y-4">
+                    <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
+                      <MapPin size={15} />
+                      Editar Endereço & Notas
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">Endereço Completo</label>
+                        <input type="text" value={contactForm.address} onChange={e => setContactForm({ ...contactForm, address: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="Rua, Número, Bairro..." />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2 flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-warm-500">Cidade</label>
+                          <input type="text" value={contactForm.city} onChange={e => setContactForm({ ...contactForm, city: e.target.value })}
+                            className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-warm-500">UF</label>
+                          <input type="text" value={contactForm.state} onChange={e => setContactForm({ ...contactForm, state: e.target.value })}
+                            className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="UF" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">CEP</label>
+                        <input type="text" value={contactForm.zip_code} onChange={e => setContactForm({ ...contactForm, zip_code: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none" placeholder="00000-000" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-warm-500">Observações Gerais</label>
+                        <textarea value={contactForm.notes} onChange={e => setContactForm({ ...contactForm, notes: e.target.value })}
+                          className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-2 text-xs text-warm-900 focus:outline-none h-24 resize-none"
+                          placeholder="Alguma nota sobre o cliente ou faturamento..." />
+                      </div>
+                    </div>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  <Card className="p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-warm-200 pb-2">
+                      <h4 className="font-semibold text-sm text-warm-850 flex items-center gap-1.5">
+                        <Users size={15} />
+                        Dados de Contato
+                      </h4>
+                      <Button variant="secondary" className="py-1 px-3 text-xs" icon={Pencil} onClick={handleStartEditContact}>
+                        Editar
                       </Button>
-                    )
-                  )}
-                  {activeStepId === stepNumber && stepNumber < 6 && !editingContact && (
-                    <Button variant="primary" className="py-1.5 px-3 text-xs" onClick={() => onAdvanceWorkflow(proj.id)}>
-                      Concluir e Avançar Etapa
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Step Content Renderers */}
-              {activeStepId === 1 && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {editingContact ? (
-                      /* Formulário de Edição de Contato */
-                      <>
-                        <Card className="p-5 space-y-4">
-                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
-                            <Users size={15} />
-                            Editar Dados de Contato
-                          </h4>
-                          <div className="space-y-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">Nome do Cliente *</label>
-                              <input
-                                type="text"
-                                value={contactForm.name}
-                                onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                required
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">Empresa</label>
-                              <input
-                                type="text"
-                                value={contactForm.company}
-                                onChange={e => setContactForm({ ...contactForm, company: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-warm-500">Contato Principal</label>
-                                <input
-                                  type="text"
-                                  value={contactForm.contact_person}
-                                  onChange={e => setContactForm({ ...contactForm, contact_person: e.target.value })}
-                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                  placeholder="Nome"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-warm-500">Cargo</label>
-                                <input
-                                  type="text"
-                                  value={contactForm.contact_position}
-                                  onChange={e => setContactForm({ ...contactForm, contact_position: e.target.value })}
-                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                  placeholder="Cargo"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">Telefone</label>
-                              <input
-                                type="text"
-                                value={contactForm.phone}
-                                onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                placeholder="(00) 00000-0000"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">E-mail</label>
-                              <input
-                                type="email"
-                                value={contactForm.email}
-                                onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                placeholder="email@exemplo.com"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">CPF/CNPJ</label>
-                              <input
-                                type="text"
-                                value={contactForm.cpf_cnpj}
-                                onChange={e => setContactForm({ ...contactForm, cpf_cnpj: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                placeholder="00.000.000/0001-00"
-                              />
-                            </div>
-                          </div>
-                        </Card>
-                        <Card className="p-5 space-y-4">
-                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
-                            <Info size={15} />
-                            Editar Endereço & Notas
-                          </h4>
-                          <div className="space-y-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">Endereço Completo</label>
-                              <input
-                                type="text"
-                                value={contactForm.address}
-                                onChange={e => setContactForm({ ...contactForm, address: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                placeholder="Rua, Número, Bairro..."
-                              />
-                            </div>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="col-span-2 flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-warm-500">Cidade</label>
-                                <input
-                                  type="text"
-                                  value={contactForm.city}
-                                  onChange={e => setContactForm({ ...contactForm, city: e.target.value })}
-                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-warm-500">UF</label>
-                                <input
-                                  type="text"
-                                  value={contactForm.state}
-                                  onChange={e => setContactForm({ ...contactForm, state: e.target.value })}
-                                  className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                  placeholder="UF"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">CEP</label>
-                              <input
-                                type="text"
-                                value={contactForm.zip_code}
-                                onChange={e => setContactForm({ ...contactForm, zip_code: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-1.5 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all"
-                                placeholder="00000-000"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-semibold text-warm-500">Observações Gerais</label>
-                              <textarea
-                                value={contactForm.notes}
-                                onChange={e => setContactForm({ ...contactForm, notes: e.target.value })}
-                                className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-2 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all h-24 resize-none"
-                                placeholder="Alguma nota sobre o cliente ou faturamento..."
-                              />
-                            </div>
-                          </div>
-                        </Card>
-                      </>
-                    ) : (
-                      /* Visualização Tradicional */
-                      <>
-                        <Card className="p-5 space-y-4">
-                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
-                            <Users size={15} />
-                            Dados de Contato
-                          </h4>
-                          <div className="space-y-3 text-sm text-warm-600">
-                            <div className="flex justify-between"><span className="font-medium">Nome do Cliente:</span> <span className="text-warm-900 font-semibold">{proj.client?.name || 'Não informado'}</span></div>
-                            <div className="flex justify-between"><span className="font-medium">Empresa:</span> <span className="text-warm-900">{proj.client?.company || 'Não informada'}</span></div>
-                            <div className="flex justify-between"><span className="font-medium">Cargo/Contato:</span> <span className="text-warm-900">{proj.client?.contact_person || 'Não informado'} {proj.client?.contact_position ? `(${proj.client.contact_position})` : ''}</span></div>
-                            <div className="flex justify-between"><span className="font-medium">Telefone:</span> <span className="text-warm-900">{proj.client?.phone || 'Não informado'}</span></div>
-                            <div className="flex justify-between"><span className="font-medium">E-mail:</span> <a href={`mailto:${proj.client?.email}`} className="text-brand-500 hover:underline">{proj.client?.email || 'Não informado'}</a></div>
-                            <div className="flex justify-between"><span className="font-medium">CPF/CNPJ:</span> <span className="text-warm-900">{proj.client?.cpf_cnpj || 'Não informado'}</span></div>
-                          </div>
-                          {onViewClient && (
-                            <div className="pt-3 border-t border-warm-200/40 flex justify-end">
-                              <button
-                                onClick={() => onViewClient(proj)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-brand-500 hover:text-brand-400 transition-colors"
-                              >
-                                Ver mais sobre este cliente <ExternalLink size={11} />
-                              </button>
-                            </div>
-                          )}
-                        </Card>
-                        <Card className="p-5 space-y-4">
-                          <h4 className="font-semibold text-sm text-warm-850 border-b border-warm-200 pb-2 flex items-center gap-1.5">
-                            <Info size={15} />
-                            Endereço & Notas
-                          </h4>
-                          <div className="space-y-3 text-sm text-warm-600">
-                            <div>
-                              <span className="font-medium">Endereço Completo:</span>
-                              <p className="text-warm-900 mt-1">
-                                {proj.client?.address ? `${proj.client.address}, ` : ''}
-                                {proj.client?.city ? `${proj.client.city} - ` : ''}
-                                {proj.client?.state || ''}
-                                {proj.client?.zip_code ? ` (CEP: ${proj.client.zip_code})` : ''}
-                                {(!proj.client?.address && !proj.client?.city) && 'Nenhum endereço cadastrado'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Observações Gerais:</span>
-                              <p className="text-warm-900 mt-1 bg-warm-200/40 p-3 rounded-lg border border-warm-300/40 italic">
-                                {proj.client?.notes || 'Nenhuma observação cadastrada.'}
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
-                      </>
+                    </div>
+                    <div className="space-y-2.5 text-sm text-warm-600">
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">Nome:</span> <span className="text-warm-900 font-semibold text-right">{proj.client?.name || 'Não informado'}</span></div>
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">Empresa:</span> <span className="text-warm-900 text-right">{proj.client?.company || 'Não informada'}</span></div>
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">Contato:</span> <span className="text-warm-900 text-right">{proj.client?.contact_person || 'Não informado'}{proj.client?.contact_position ? ` (${proj.client.contact_position})` : ''}</span></div>
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">Telefone:</span> <span className="text-warm-900 text-right">{proj.client?.phone || 'Não informado'}</span></div>
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">E-mail:</span> <a href={`mailto:${proj.client?.email}`} className="text-brand-500 hover:underline text-right">{proj.client?.email || 'Não informado'}</a></div>
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">CPF/CNPJ:</span> <span className="text-warm-900 text-right">{proj.client?.cpf_cnpj || 'Não informado'}</span></div>
+                      <div className="flex justify-between gap-2"><span className="font-medium shrink-0">Cadastro:</span> <span className="text-warm-900 text-right">{proj.created_at ? new Date(proj.created_at).toLocaleDateString('pt-BR') : '—'}</span></div>
+                    </div>
+                    {onViewClient && (
+                      <div className="pt-3 border-t border-warm-200/40">
+                        <Button variant="outline" icon={ExternalLink} className="w-full justify-center text-xs py-1.5" onClick={() => onViewClient(proj)}>
+                          Ver mais sobre este cliente
+                        </Button>
+                      </div>
                     )}
-                  </div>
-                </div>
+                  </Card>
+                  <Card className="p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-warm-200 pb-2">
+                      <h4 className="font-semibold text-sm text-warm-850 flex items-center gap-1.5">
+                        <MapPin size={15} />
+                        Endereço & Observações
+                      </h4>
+                      <Button variant="secondary" className="py-1 px-3 text-xs" icon={StickyNote}
+                        onClick={() => { setNoteText(proj.client?.notes || ''); setAddingNote(!addingNote); }}>
+                        {addingNote ? 'Cancelar' : 'Editar Obs.'}
+                      </Button>
+                    </div>
+                    <div className="space-y-3 text-sm text-warm-600">
+                      <div>
+                        <span className="font-medium">Endereço:</span>
+                        <p className="text-warm-900 mt-1">
+                          {proj.client?.address ? `${proj.client.address}, ` : ''}
+                          {proj.client?.city ? `${proj.client.city} - ` : ''}
+                          {proj.client?.state || ''}
+                          {proj.client?.zip_code ? ` (CEP: ${proj.client.zip_code})` : ''}
+                          {(!proj.client?.address && !proj.client?.city) && 'Nenhum endereço cadastrado'}
+                        </p>
+                      </div>
+                      {!addingNote ? (
+                        <div>
+                          <span className="font-medium">Observações:</span>
+                          <p className="text-warm-900 mt-1 bg-warm-200/40 p-3 rounded-lg border border-warm-300/40 italic min-h-[48px]">
+                            {proj.client?.notes || 'Nenhuma observação cadastrada.'}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-warm-500">Observações / Notas</label>
+                          <textarea
+                            autoFocus
+                            value={noteText}
+                            onChange={e => setNoteText(e.target.value)}
+                            className="w-full bg-warm-200 border border-warm-300 rounded-xl px-3 py-2 text-xs text-warm-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 h-28 resize-none"
+                            placeholder="Observações sobre o cliente ou o projeto..."
+                          />
+                          <div className="flex gap-2">
+                            <Button variant="primary" className="text-xs py-1.5 px-3" onClick={handleSaveNote} loading={savingNote}>Salvar</Button>
+                            <Button variant="outline" className="text-xs py-1.5 px-3" onClick={() => setAddingNote(false)}>Cancelar</Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </>
               )}
+            </div>
+            <DemandStepForm proj={proj} onUpdateProject={onUpdateProject} />
+          </div>
+        )}
 
-              {activeStepId === 2 && (
-                <DemandStepForm proj={proj} onUpdateProject={onUpdateProject} />
-              )}
-
-              {activeStepId === 3 && (
-                <CommercialStepManager type="proposal" proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
-              )}
-
-              {activeStepId === 4 && (
-                <CommercialStepManager type="contract" proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
-              )}
-
-              {activeStepId === 5 && (
-                <PaymentStepManager proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
-              )}
-
-              {activeStepId === 6 && (
-                <FinalizationStepForm proj={proj} onUpdateProject={onUpdateProject} />
-              )}
+        {/* ── ACORDO COMERCIAL TAB ── */}
+        {subTab === 'acordo-comercial' && (
+          <div className="space-y-8 py-2">
+            <CommercialStepManager type="contract" proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
+            <div className="border-t border-warm-300 pt-6">
+              <CommercialStepManager type="proposal" proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
             </div>
           </div>
         )}
@@ -1738,7 +1675,7 @@ export default function ProjetosView({
                 <p className="text-[10px] text-warm-500 mt-1.5 font-mono">{paidPct}% faturado</p>
               </div>
               <Card className="p-5">
-                <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-2">Ja Faturado</p>
+                <p className="text-[10px] text-warm-500 font-bold uppercase tracking-widest mb-2">Já Faturado</p>
                 <p className="text-2xl font-bold text-emerald-600 font-mono">R$ {paidTotal.toLocaleString('pt-BR')}</p>
                 <p className="text-[11px] text-warm-500 mt-1">pagamentos confirmados</p>
               </Card>
@@ -1748,30 +1685,74 @@ export default function ProjetosView({
                 <p className="text-[11px] text-warm-500 mt-1">a receber</p>
               </Card>
             </div>
-            <Card>
-              <div className="px-6 py-4 border-b border-warm-200">
-                <h4 className="font-semibold text-sm text-warm-900">Historico de Lancamentos</h4>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between border-b border-warm-200 pb-3 mb-4">
+                <h4 className="font-semibold text-sm text-warm-900 flex items-center gap-2">
+                  <DollarSign size={15} className="text-brand-500" />
+                  Lançamentos
+                </h4>
+                <Button variant={addPaymentOpen ? 'outline' : 'primary'} className="text-xs py-1.5 px-3" icon={Plus}
+                  onClick={() => setAddPaymentOpen(!addPaymentOpen)}>
+                  {addPaymentOpen ? 'Cancelar' : 'Adicionar Lançamento'}
+                </Button>
               </div>
+              {addPaymentOpen && (
+                <form onSubmit={handleCreatePayment} className="space-y-4 mb-6 p-4 bg-warm-100/60 rounded-xl border border-warm-300/50">
+                  <h5 className="font-semibold text-xs text-warm-800">Novo Lançamento</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-1">Descrição *</label>
+                      <input type="text" required value={newPayDesc} onChange={e => setNewPayDesc(e.target.value)}
+                        className="w-full bg-warm-50 border border-warm-300 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                        placeholder="Ex: Parcela 1 — Design" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-1">Valor (R$) *</label>
+                      <input type="number" required min="0" step="0.01" value={newPayAmount} onChange={e => setNewPayAmount(e.target.value)}
+                        className="w-full bg-warm-50 border border-warm-300 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-1">Vencimento</label>
+                      <input type="date" value={newPayDueDate} onChange={e => setNewPayDueDate(e.target.value)}
+                        className="w-full bg-warm-50 border border-warm-300 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-warm-500 font-semibold uppercase mb-1">Observação</label>
+                      <input type="text" value={newPayObs} onChange={e => setNewPayObs(e.target.value)}
+                        className="w-full bg-warm-50 border border-warm-300 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                        placeholder="Ex: Referente ao escopo inicial" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" loading={savingPay}>Salvar Lançamento</Button>
+                  </div>
+                </form>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-warm-200/40 text-warm-500 text-[10px] font-bold uppercase tracking-widest">
                     <tr>
-                      <th className="px-6 py-3.5">Data</th>
-                      <th className="px-6 py-3.5">Descricao</th>
-                      <th className="px-6 py-3.5">Valor</th>
-                      <th className="px-6 py-3.5">Status</th>
+                      <th className="px-4 py-3">Data</th>
+                      <th className="px-4 py-3">Descrição</th>
+                      <th className="px-4 py-3">Valor</th>
+                      <th className="px-4 py-3">Observação</th>
+                      <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-50">
+                  <tbody className="divide-y divide-warm-200/40">
                     {payments.length === 0 ? (
-                      <tr><td colSpan="4" className="px-6 py-12 text-center text-warm-500 text-sm">Nenhum pagamento registrado.</td></tr>
+                      <tr><td colSpan="5" className="px-4 py-12 text-center text-warm-500 text-sm">Nenhum lançamento registrado.</td></tr>
                     ) : (
                       payments.map(pay => (
                         <tr key={pay.id} className="hover:bg-warm-200/30 transition-colors">
-                          <td className="px-6 py-4 font-mono text-sm text-warm-500">{pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}</td>
-                          <td className="px-6 py-4 font-medium text-warm-600">{pay.description}</td>
-                          <td className="px-6 py-4 font-semibold font-mono text-warm-900">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
-                          <td className="px-6 py-4"><Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge></td>
+                          <td className="px-4 py-3 font-mono text-sm text-warm-500">{pay.due_date ? new Date(pay.due_date).toLocaleDateString('pt-BR') : '—'}</td>
+                          <td className="px-4 py-3 font-medium text-warm-600">{pay.description}</td>
+                          <td className="px-4 py-3 font-semibold font-mono text-warm-900">R$ {(pay.amount || 0).toLocaleString('pt-BR')}</td>
+                          <td className="px-4 py-3 text-xs text-warm-500 italic">{pay.metadata?.observation || '—'}</td>
+                          <td className="px-4 py-3"><Badge color={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status}</Badge></td>
                         </tr>
                       ))
                     )}
@@ -1779,6 +1760,8 @@ export default function ProjetosView({
                 </table>
               </div>
             </Card>
+
+            <PaymentStepManager proj={proj} currentUser={currentUser} refreshProject={refreshProject} />
           </div>
         )}
       </div>

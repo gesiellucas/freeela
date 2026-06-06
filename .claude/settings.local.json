@@ -56,7 +56,13 @@
       "Bash(node --input-type=module)",
       "Bash(npx --yes acorn --ecma2020 --module src/views/OverviewView.jsx)",
       "Bash(node -e \"const fs = require\\('fs'\\); const code = fs.readFileSync\\('src/views/OverviewView.jsx', 'utf8'\\); console.log\\(code.length + ' chars, looks ok'\\)\")",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(npm run *)",
+      "Bash(git -C \"d:\\\\Workspace\\\\GitHub\\\\Freeela\" status)",
+      "Bash(git -C \"d:\\\\Workspace\\\\GitHub\\\\Freeela\" diff --stat)",
+      "Bash(git -C \"d:\\\\Workspace\\\\GitHub\\\\Freeela\" log --oneline -5)",
+      "Bash(git -C \"d:\\\\Workspace\\\\GitHub\\\\Freeela\" add app/src/views/ProjetosView.jsx .claude/settings.local.json)",
+      "Bash(git -C 'd:\\\\Workspace\\\\GitHub\\\\Freeela' commit -m ' *)"
     ]
   }
 }
