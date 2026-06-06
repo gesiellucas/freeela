@@ -48,7 +48,15 @@
       "Bash(git rm *)",
       "Bash(git checkout *)",
       "Bash(python3 -)",
-      "Bash(python -)"
+      "Bash(python -)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(node --input-type=module)",
+      "Bash(npx --yes acorn --ecma2020 --module src/views/OverviewView.jsx)",
+      "Bash(node -e \"const fs = require\\('fs'\\); const code = fs.readFileSync\\('src/views/OverviewView.jsx', 'utf8'\\); console.log\\(code.length + ' chars, looks ok'\\)\")",
+      "Bash(npx next *)"
     ]
   }
 }

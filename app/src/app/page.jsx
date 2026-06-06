@@ -453,6 +453,18 @@ export default function App() {
     if (selectedProject?.id === projectId) setSelectedProject(null);
   };
 
+  // --- Task status handler (usado pelo Overview) ---
+
+  const handleUpdateTaskStatus = (taskId, projectId, newStatus) => {
+    setProjects(prev =>
+      prev.map(p =>
+        p.id === projectId
+          ? { ...p, tasks: (p.tasks || []).map(t => t.id === taskId ? { ...t, status: newStatus } : t) }
+          : p
+      )
+    );
+  };
+
   // --- Checklist handlers ---
 
   const updateProjectChecklists = (projectId, updater) => {
@@ -1043,6 +1055,7 @@ export default function App() {
                 <OverviewView
                   projects={projects}
                   userId={userId}
+                  onUpdateTaskStatus={handleUpdateTaskStatus}
                 />
               )}
               {activeTab === 'painel' && (

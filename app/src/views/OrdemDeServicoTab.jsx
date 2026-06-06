@@ -3,7 +3,7 @@ import {
   Plus, X, ChevronRight, ChevronDown, Trash2, Pencil,
   CheckCircle2, Clock, AlertCircle, FileText, Calendar,
   DollarSign, BarChart2, Users, Layers, CheckSquare,
-  Square, ArrowLeft, ClipboardList, Lock, Info,
+  Square, ArrowLeft, ClipboardList, Lock, Info, Check,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -100,6 +100,7 @@ function OSTaskCard({
   task, allTasks, allChecklists,
   onDeleteTask, onDeleteSubtask, onToggleChecklistItem, onDeleteChecklistItem,
   onAddChecklistItem, onUpdateTaskStatus, onCreateSubtask, onCreateChecklist, onDeleteChecklist,
+  onUpdateTask, onUpdateSubtask, onUpdateChecklistItem,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [subtaskFormOpen, setSubtaskFormOpen] = useState(false);
@@ -111,6 +112,26 @@ function OSTaskCard({
   const [savingSubtask, setSavingSubtask] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
   const [newItemInput, setNewItemInput] = useState({});
+
+  // Edit task state
+  const [editTaskOpen, setEditTaskOpen] = useState(false);
+  const [editTaskTitle, setEditTaskTitle] = useState(task.title);
+  const [editTaskDesc, setEditTaskDesc] = useState(task.description || '');
+  const [editTaskDate, setEditTaskDate] = useState(task.due_date || '');
+  const [editTaskDifficulty, setEditTaskDifficulty] = useState(task.difficulty || 'Média');
+  const [savingTaskEdit, setSavingTaskEdit] = useState(false);
+
+  // Edit subtask state
+  const [editSubtaskId, setEditSubtaskId] = useState(null);
+  const [editSubtaskTitle, setEditSubtaskTitle] = useState('');
+  const [editSubtaskDesc, setEditSubtaskDesc] = useState('');
+  const [editSubtaskDate, setEditSubtaskDate] = useState('');
+  const [editSubtaskDifficulty, setEditSubtaskDifficulty] = useState('Média');
+  const [savingSubtaskEdit, setSavingSubtaskEdit] = useState(false);
+
+  // Edit checklist item state
+  const [editItemId, setEditItemId] = useState(null);
+  const [editItemTitle, setEditItemTitle] = useState('');
 
   const subtasks = (allTasks || []).filter(t => t.parent_task_id === task.id);
   const subtasksDone = subtasks.filter(t => t.status === 'done').length;
@@ -132,6 +153,53 @@ function OSTaskCard({
     setNewSubtaskTitle(''); setNewSubtaskDesc(''); setNewSubtaskDate(''); setNewSubtaskDifficulty('Média');
     setSubtaskFormOpen(false);
     setSavingSubtask(false);
+  };
+
+  const handleSaveTaskEdit = async () => {
+    if (!editTaskTitle.trim()) return;
+    setSavingTaskEdit(true);
+    await onUpdateTask(task.id, {
+      title: editTaskTitle.trim(),
+      description: editTaskDesc.trim() || null,
+      due_date: editTaskDate || null,
+      difficulty: editTaskDifficulty,
+    });
+    setEditTaskOpen(false);
+    setSavingTaskEdit(false);
+  };
+
+  const openEditSubtask = (subtask) => {
+    setEditSubtaskId(subtask.id);
+    setEditSubtaskTitle(subtask.title);
+    setEditSubtaskDesc(subtask.description || '');
+    setEditSubtaskDate(subtask.due_date || '');
+    setEditSubtaskDifficulty(subtask.difficulty || 'Média');
+    setChecklistFormSubtaskId(null);
+  };
+
+  const handleSaveSubtaskEdit = async () => {
+    if (!editSubtaskTitle.trim()) return;
+    setSavingSubtaskEdit(true);
+    await onUpdateSubtask(editSubtaskId, {
+      title: editSubtaskTitle.trim(),
+      description: editSubtaskDesc.trim() || null,
+      due_date: editSubtaskDate || null,
+      difficulty: editSubtaskDifficulty,
+    });
+    setEditSubtaskId(null);
+    setSavingSubtaskEdit(false);
+  };
+
+  const openEditItem = (item) => {
+    setEditItemId(item.id);
+    setEditItemTitle(item.title);
+  };
+
+  const handleSaveItemEdit = async (itemId) => {
+    if (!editItemTitle.trim()) return;
+    await onUpdateChecklistItem(itemId, editItemTitle.trim());
+    setEditItemId(null);
+    setEditItemTitle('');
   };
 
   return (
@@ -184,25 +252,73 @@ function OSTaskCard({
                 <ChevronRight size={13} className="text-brand-500" />
               </button>
             )}
+            <button
+              onClick={() => { setEditTaskOpen(!editTaskOpen); setSubtaskFormOpen(false); }}
+              className={`p-1.5 rounded-lg transition-colors ${editTaskOpen ? 'bg-brand-100 text-brand-600' : 'hover:bg-warm-200 text-warm-400 hover:text-warm-600'}`}
+              title="Editar tarefa">
+              <Pencil size={13} />
+            </button>
             <button onClick={() => onDeleteTask(task.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-warm-400 hover:text-red-500 transition-colors">
               <Trash2 size={13} />
             </button>
           </div>
         </div>
 
-        {/* Botão + Subtarefa */}
-        <div className="flex items-center gap-2 mt-3 ml-6">
-          <button
-            onClick={() => { setSubtaskFormOpen(!subtaskFormOpen); setChecklistFormSubtaskId(null); }}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${subtaskFormOpen ? 'bg-amber-100 border-amber-400 text-amber-700' : 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'}`}
-          >
-            <Plus size={11} />
-            Subtarefa
-          </button>
-        </div>
+        {/* Formulário de edição da tarefa */}
+        {editTaskOpen && (
+          <div className="mt-3 ml-6 bg-brand-50/60 border border-brand-200 rounded-xl p-3 space-y-2">
+            <p className="text-[10px] font-bold text-brand-800 uppercase tracking-wide">Editar Tarefa</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="md:col-span-2">
+                <input type="text" value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)}
+                  placeholder="Título da tarefa *"
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400" />
+              </div>
+              <div>
+                <select value={editTaskDifficulty} onChange={e => setEditTaskDifficulty(e.target.value)}
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+                  <option value="Baixa">Baixa</option>
+                  <option value="Média">Média</option>
+                  <option value="Alta">Alta</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="md:col-span-2">
+                <input type="text" value={editTaskDesc} onChange={e => setEditTaskDesc(e.target.value)}
+                  placeholder="Descrição (opcional)"
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
+              </div>
+              <div>
+                <input type="date" value={editTaskDate} onChange={e => setEditTaskDate(e.target.value)}
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs focus:outline-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setEditTaskOpen(false)} className="px-3 py-1.5 text-xs text-warm-500 hover:text-warm-700">Cancelar</button>
+              <button onClick={handleSaveTaskEdit} disabled={savingTaskEdit || !editTaskTitle.trim()}
+                className="bg-brand-500 text-warm-900 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-brand-400 disabled:opacity-50">
+                {savingTaskEdit ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Botão + Subtarefa — oculto quando tarefa está concluída */}
+        {task.status !== 'done' && (
+          <div className="flex items-center gap-2 mt-3 ml-6">
+            <button
+              onClick={() => { setSubtaskFormOpen(!subtaskFormOpen); setChecklistFormSubtaskId(null); setEditTaskOpen(false); }}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${subtaskFormOpen ? 'bg-amber-100 border-amber-400 text-amber-700' : 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'}`}
+            >
+              <Plus size={11} />
+              Subtarefa
+            </button>
+          </div>
+        )}
 
         {/* Formulário de nova subtarefa */}
-        {subtaskFormOpen && (
+        {subtaskFormOpen && task.status !== 'done' && (
           <div className="mt-3 ml-6 bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
             <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide">Nova Subtarefa</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -246,12 +362,17 @@ function OSTaskCard({
       {expanded && (
         <div className="border-t border-warm-200 bg-warm-100/40 px-4 py-3 space-y-3">
           {subtasks.length === 0 && (
-            <p className="text-xs text-warm-400 italic py-1">Nenhuma subtarefa. Use o botão acima para adicionar.</p>
+            <p className="text-xs text-warm-400 italic py-1">
+              {task.status === 'done'
+                ? 'Tarefa concluída. Nenhuma subtarefa.'
+                : 'Nenhuma subtarefa. Use o botão acima para adicionar.'}
+            </p>
           )}
           {subtasks.map(subtask => {
             const subtaskChecklists = (allChecklists || []).filter(c => c.task_id === subtask.id);
             const totalItems = subtaskChecklists.reduce((sum, c) => sum + (c.checklist_items?.length || 0), 0);
             const doneItems  = subtaskChecklists.reduce((sum, c) => sum + (c.checklist_items?.filter(i => i.completed).length || 0), 0);
+            const isEditingThisSubtask = editSubtaskId === subtask.id;
             return (
               <div key={subtask.id} className="border border-amber-200/70 rounded-xl bg-amber-50/30 overflow-hidden">
                 {/* Header da subtarefa */}
@@ -288,11 +409,57 @@ function OSTaskCard({
                       <Plus size={10} />
                       Checklist
                     </button>
+                    <button
+                      onClick={() => isEditingThisSubtask ? setEditSubtaskId(null) : openEditSubtask(subtask)}
+                      className={`p-1 rounded-lg transition-colors ${isEditingThisSubtask ? 'bg-brand-100 text-brand-600' : 'hover:bg-warm-200 text-warm-400 hover:text-warm-600'}`}
+                      title="Editar subtarefa">
+                      <Pencil size={12} />
+                    </button>
                     <button onClick={() => onDeleteSubtask(subtask.id)} className="p-1 hover:bg-red-50 rounded-lg text-warm-400 hover:text-red-500 transition-colors">
                       <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
+
+                {/* Formulário de edição da subtarefa */}
+                {isEditingThisSubtask && (
+                  <div className="mx-3 mb-2 bg-brand-50/60 border border-brand-200 rounded-lg p-2.5 space-y-2">
+                    <p className="text-[10px] font-bold text-brand-700 uppercase tracking-wide">Editar Subtarefa</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="md:col-span-2">
+                        <input type="text" value={editSubtaskTitle} onChange={e => setEditSubtaskTitle(e.target.value)}
+                          placeholder="Título *"
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                      </div>
+                      <div>
+                        <select value={editSubtaskDifficulty} onChange={e => setEditSubtaskDifficulty(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+                          <option value="Baixa">Baixa</option>
+                          <option value="Média">Média</option>
+                          <option value="Alta">Alta</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="md:col-span-2">
+                        <input type="text" value={editSubtaskDesc} onChange={e => setEditSubtaskDesc(e.target.value)}
+                          placeholder="Descrição (opcional)"
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
+                      </div>
+                      <div>
+                        <input type="date" value={editSubtaskDate} onChange={e => setEditSubtaskDate(e.target.value)}
+                          className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs focus:outline-none" />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button onClick={() => setEditSubtaskId(null)} className="px-3 py-1 text-xs text-warm-500 hover:text-warm-700">Cancelar</button>
+                      <button onClick={handleSaveSubtaskEdit} disabled={savingSubtaskEdit || !editSubtaskTitle.trim()}
+                        className="bg-brand-500 text-warm-900 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-brand-400 disabled:opacity-50">
+                        {savingSubtaskEdit ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Formulário de novo checklist */}
                 {checklistFormSubtaskId === subtask.id && (
@@ -352,11 +519,44 @@ function OSTaskCard({
                                     ? <CheckSquare size={12} className="text-emerald-500" />
                                     : <Square size={12} />}
                                 </button>
-                                <span className={`flex-1 ${item.completed ? 'line-through text-warm-400' : 'text-warm-700'}`}>{item.title}</span>
-                                <button onClick={() => onDeleteChecklistItem(item.id)}
-                                  className="p-0.5 text-warm-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                                  <X size={9} />
-                                </button>
+                                {editItemId === item.id ? (
+                                  <div className="flex-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editItemTitle}
+                                      onChange={e => setEditItemTitle(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') handleSaveItemEdit(item.id);
+                                        if (e.key === 'Escape') { setEditItemId(null); setEditItemTitle(''); }
+                                      }}
+                                      autoFocus
+                                      className="flex-1 bg-warm-100 border border-warm-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400"
+                                    />
+                                    <button onClick={() => handleSaveItemEdit(item.id)}
+                                      className="p-0.5 text-emerald-500 hover:text-emerald-700 transition-colors">
+                                      <Check size={11} />
+                                    </button>
+                                    <button onClick={() => { setEditItemId(null); setEditItemTitle(''); }}
+                                      className="p-0.5 text-warm-400 hover:text-warm-600 transition-colors">
+                                      <X size={10} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className={`flex-1 ${item.completed ? 'line-through text-warm-400' : 'text-warm-700'}`}>
+                                      {item.title}
+                                    </span>
+                                    <button onClick={() => openEditItem(item)}
+                                      className="p-0.5 text-warm-400 hover:text-brand-500 opacity-0 group-hover:opacity-100 transition-all"
+                                      title="Editar item">
+                                      <Pencil size={9} />
+                                    </button>
+                                    <button onClick={() => onDeleteChecklistItem(item.id)}
+                                      className="p-0.5 text-warm-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                      <X size={9} />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             ))}
                             <div className="flex items-center gap-2 pt-1 border-t border-warm-200/60">
@@ -479,6 +679,22 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
     }
   };
 
+  const handleUpdateTask = async (taskId, data) => {
+    try {
+      const { error } = await supabase.from('tasks').update({
+        title: data.title,
+        description: data.description,
+        due_date: data.due_date,
+        difficulty: data.difficulty,
+      }).eq('id', taskId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao atualizar tarefa:', err);
+      alert('Erro ao atualizar tarefa: ' + err.message);
+    }
+  };
+
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
       const { error } = await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId);
@@ -506,6 +722,16 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
       await refreshProject();
     } catch (err) {
       console.error('Erro ao excluir item:', err);
+    }
+  };
+
+  const handleUpdateChecklistItem = async (itemId, title) => {
+    try {
+      const { error } = await supabase.from('checklist_items').update({ title }).eq('id', itemId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao atualizar item:', err);
     }
   };
 
@@ -554,6 +780,22 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
       await refreshProject();
     } catch (err) {
       console.error('Erro ao excluir subtarefa:', err);
+    }
+  };
+
+  const handleUpdateSubtask = async (subtaskId, data) => {
+    try {
+      const { error } = await supabase.from('tasks').update({
+        title: data.title,
+        description: data.description,
+        due_date: data.due_date,
+        difficulty: data.difficulty,
+      }).eq('id', subtaskId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao atualizar subtarefa:', err);
+      alert('Erro ao atualizar subtarefa: ' + err.message);
     }
   };
 
@@ -940,6 +1182,9 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
               onCreateSubtask={handleCreateSubtask}
               onCreateChecklist={handleCreateChecklist}
               onDeleteChecklist={handleDeleteChecklist}
+              onUpdateTask={handleUpdateTask}
+              onUpdateSubtask={handleUpdateSubtask}
+              onUpdateChecklistItem={handleUpdateChecklistItem}
             />
           ))}
         </div>
