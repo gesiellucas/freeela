@@ -44,7 +44,11 @@
       "PowerShell(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\" -File -Force | Select-Object Name | ForEach-Object { $_.Name })",
       "PowerShell(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\app\" -Directory | Select-Object Name | ForEach-Object { $_.Name })",
       "PowerShell(Get-ChildItem -Path \"d:\\\\Workspace\\\\GitHub\\\\Freeela\\\\backend\" -Directory | Select-Object Name | ForEach-Object { $_.Name })",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git checkout *)",
+      "Bash(python3 -)",
+      "Bash(python -)"
     ]
   }
 }

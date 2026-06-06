@@ -96,17 +96,43 @@ function OSStatusBadge({ status }) {
 
 // ── Task Card (within OS) ────────────────────────────────────────────────────
 
-function OSTaskCard({ task, checklists, onDeleteTask, onToggleChecklistItem, onDeleteChecklistItem, onAddChecklistItem, onUpdateTaskStatus }) {
+function OSTaskCard({
+  task, allTasks, allChecklists,
+  onDeleteTask, onDeleteSubtask, onToggleChecklistItem, onDeleteChecklistItem,
+  onAddChecklistItem, onUpdateTaskStatus, onCreateSubtask, onCreateChecklist, onDeleteChecklist,
+}) {
   const [expanded, setExpanded] = useState(false);
-  const [newSubTitle, setNewSubTitle] = useState({});
-  const taskChecklists = checklists.filter(c => c.task_id === task.id);
-  const totalItems = taskChecklists.reduce((sum, c) => sum + (c.checklist_items?.length || 0), 0);
-  const doneItems  = taskChecklists.reduce((sum, c) => sum + (c.checklist_items?.filter(i => i.completed).length || 0), 0);
+  const [subtaskFormOpen, setSubtaskFormOpen] = useState(false);
+  const [checklistFormSubtaskId, setChecklistFormSubtaskId] = useState(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [newSubtaskDesc, setNewSubtaskDesc] = useState('');
+  const [newSubtaskDate, setNewSubtaskDate] = useState('');
+  const [newSubtaskDifficulty, setNewSubtaskDifficulty] = useState('Média');
+  const [savingSubtask, setSavingSubtask] = useState(false);
+  const [newChecklistTitle, setNewChecklistTitle] = useState('');
+  const [newItemInput, setNewItemInput] = useState({});
+
+  const subtasks = (allTasks || []).filter(t => t.parent_task_id === task.id);
+  const subtasksDone = subtasks.filter(t => t.status === 'done').length;
 
   const STATUS_NEXT = { todo: 'doing', doing: 'waiting', waiting: 'done', done: null };
   const STATUS_PREV = { todo: null, doing: 'todo', waiting: 'doing', done: 'waiting' };
   const STATUS_LABELS = { todo: 'A Fazer', doing: 'Em Progresso', waiting: 'Aguardando', done: 'Concluído' };
   const STATUS_DOT = { todo: 'bg-warm-400', doing: 'bg-amber-400', waiting: 'bg-blue-400', done: 'bg-emerald-400' };
+
+  const handleCreateSubtask = async () => {
+    if (!newSubtaskTitle.trim()) return;
+    setSavingSubtask(true);
+    await onCreateSubtask(task.id, {
+      title: newSubtaskTitle.trim(),
+      description: newSubtaskDesc.trim() || null,
+      due_date: newSubtaskDate || null,
+      difficulty: newSubtaskDifficulty,
+    });
+    setNewSubtaskTitle(''); setNewSubtaskDesc(''); setNewSubtaskDate(''); setNewSubtaskDifficulty('Média');
+    setSubtaskFormOpen(false);
+    setSavingSubtask(false);
+  };
 
   return (
     <Card className="overflow-hidden border-l-4 border-l-brand-500/60">
@@ -137,10 +163,10 @@ function OSTaskCard({ task, checklists, onDeleteTask, onToggleChecklistItem, onD
                   </Badge>
                 </>
               )}
-              {totalItems > 0 && (
+              {subtasks.length > 0 && (
                 <>
                   <span className="text-warm-300">|</span>
-                  <span className="text-[10px] font-mono text-emerald-600">{doneItems}/{totalItems}</span>
+                  <span className="text-[10px] font-mono text-emerald-600">{subtasksDone}/{subtasks.length} subtarefas</span>
                 </>
               )}
             </div>
@@ -163,71 +189,205 @@ function OSTaskCard({ task, checklists, onDeleteTask, onToggleChecklistItem, onD
             </button>
           </div>
         </div>
+
+        {/* Botão + Subtarefa */}
+        <div className="flex items-center gap-2 mt-3 ml-6">
+          <button
+            onClick={() => { setSubtaskFormOpen(!subtaskFormOpen); setChecklistFormSubtaskId(null); }}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${subtaskFormOpen ? 'bg-amber-100 border-amber-400 text-amber-700' : 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'}`}
+          >
+            <Plus size={11} />
+            Subtarefa
+          </button>
+        </div>
+
+        {/* Formulário de nova subtarefa */}
+        {subtaskFormOpen && (
+          <div className="mt-3 ml-6 bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+            <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide">Nova Subtarefa</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="md:col-span-2">
+                <input type="text" value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)}
+                  placeholder="Título da subtarefa *"
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
+              </div>
+              <div>
+                <select value={newSubtaskDifficulty} onChange={e => setNewSubtaskDifficulty(e.target.value)}
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+                  <option value="Baixa">Baixa</option>
+                  <option value="Média">Média</option>
+                  <option value="Alta">Alta</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="md:col-span-2">
+                <input type="text" value={newSubtaskDesc} onChange={e => setNewSubtaskDesc(e.target.value)}
+                  placeholder="Descrição (opcional)"
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
+              </div>
+              <div>
+                <input type="date" value={newSubtaskDate} onChange={e => setNewSubtaskDate(e.target.value)}
+                  className="w-full bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs focus:outline-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setSubtaskFormOpen(false)} className="px-3 py-1.5 text-xs text-warm-500">Cancelar</button>
+              <button onClick={handleCreateSubtask} disabled={savingSubtask || !newSubtaskTitle.trim()}
+                className="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-400 disabled:opacity-50">
+                {savingSubtask ? 'Criando...' : 'Criar Subtarefa'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Checklists expandidos */}
+      {/* Subtarefas expandidas */}
       {expanded && (
-        <div className="border-t border-warm-200 bg-warm-100/40 px-4 py-3 space-y-4">
-          {taskChecklists.length === 0 && (
-            <p className="text-xs text-warm-500 italic py-1">Nenhuma subtarefa ainda.</p>
+        <div className="border-t border-warm-200 bg-warm-100/40 px-4 py-3 space-y-3">
+          {subtasks.length === 0 && (
+            <p className="text-xs text-warm-400 italic py-1">Nenhuma subtarefa. Use o botão acima para adicionar.</p>
           )}
-          {taskChecklists.map(cl => {
-            const items = cl.checklist_items || [];
-            const done = items.filter(i => i.completed).length;
-            const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+          {subtasks.map(subtask => {
+            const subtaskChecklists = (allChecklists || []).filter(c => c.task_id === subtask.id);
+            const totalItems = subtaskChecklists.reduce((sum, c) => sum + (c.checklist_items?.length || 0), 0);
+            const doneItems  = subtaskChecklists.reduce((sum, c) => sum + (c.checklist_items?.filter(i => i.completed).length || 0), 0);
             return (
-              <div key={cl.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-warm-800">{cl.title}</p>
-                  {items.length > 0 && (
-                    <span className="text-[10px] font-mono text-emerald-600">{done}/{items.length} ({pct}%)</span>
-                  )}
-                </div>
-                <div className="space-y-1.5 pl-2">
-                  {items.map(item => (
-                    <div key={item.id} className="flex items-center gap-2 group text-xs">
-                      <button onClick={() => onToggleChecklistItem(item.id, !item.completed)}
-                        className="text-warm-500 hover:text-brand-500 flex-shrink-0 transition-colors">
-                        {item.completed
-                          ? <CheckSquare size={13} className="text-emerald-500" />
-                          : <Square size={13} />}
-                      </button>
-                      <span className={`flex-1 ${item.completed ? 'line-through text-warm-400' : 'text-warm-700'}`}>
-                        {item.title}
-                      </span>
-                      <button onClick={() => onDeleteChecklistItem(item.id)}
-                        className="p-0.5 text-warm-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                        <X size={10} />
-                      </button>
+              <div key={subtask.id} className="border border-amber-200/70 rounded-xl bg-amber-50/30 overflow-hidden">
+                {/* Header da subtarefa */}
+                <div className="px-3 py-2.5 flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-400 font-bold text-xs">↳</span>
+                      <p className="text-xs font-semibold text-warm-900">{subtask.title}</p>
                     </div>
-                  ))}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Plus size={12} className="text-warm-400 flex-shrink-0" />
-                    <input
-                      type="text"
-                      value={newSubTitle[cl.id] || ''}
-                      onChange={e => setNewSubTitle({ ...newSubTitle, [cl.id]: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          onAddChecklistItem(cl.id, newSubTitle[cl.id] || '');
-                          setNewSubTitle({ ...newSubTitle, [cl.id]: '' });
-                        }
-                      }}
-                      placeholder="Adicionar item..."
-                      className="flex-1 bg-transparent text-xs text-warm-700 outline-none placeholder-warm-400"
-                    />
-                    {(newSubTitle[cl.id] || '').trim() && (
-                      <button
-                        onClick={() => {
-                          onAddChecklistItem(cl.id, newSubTitle[cl.id]);
-                          setNewSubTitle({ ...newSubTitle, [cl.id]: '' });
-                        }}
-                        className="text-[10px] font-semibold text-brand-600 hover:underline">
-                        Adicionar
-                      </button>
-                    )}
+                    {subtask.description && <p className="text-[10px] text-warm-500 mt-0.5 pl-4">{subtask.description}</p>}
+                    <div className="flex flex-wrap items-center gap-2 mt-1 pl-4">
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[subtask.status]}`} />
+                      <span className="text-[10px] text-warm-500">{STATUS_LABELS[subtask.status]}</span>
+                      {subtask.due_date && (
+                        <span className="text-[10px] text-warm-500 font-mono flex items-center gap-0.5">
+                          <Calendar size={9} />{fmtDate(subtask.due_date)}
+                        </span>
+                      )}
+                      {subtask.difficulty && (
+                        <Badge color={subtask.difficulty === 'Alta' ? 'red' : subtask.difficulty === 'Média' ? 'yellow' : 'blue'}>
+                          {subtask.difficulty}
+                        </Badge>
+                      )}
+                      {totalItems > 0 && (
+                        <span className="text-[10px] font-mono text-emerald-600">{doneItems}/{totalItems}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => setChecklistFormSubtaskId(checklistFormSubtaskId === subtask.id ? null : subtask.id)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${checklistFormSubtaskId === subtask.id ? 'bg-brand-100 border-brand-400 text-brand-700' : 'bg-brand-50 border-brand-200 text-brand-600 hover:bg-brand-100'}`}
+                    >
+                      <Plus size={10} />
+                      Checklist
+                    </button>
+                    <button onClick={() => onDeleteSubtask(subtask.id)} className="p-1 hover:bg-red-50 rounded-lg text-warm-400 hover:text-red-500 transition-colors">
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 </div>
+
+                {/* Formulário de novo checklist */}
+                {checklistFormSubtaskId === subtask.id && (
+                  <div className="mx-3 mb-2 bg-warm-50 border border-warm-300 rounded-lg p-2.5 space-y-2">
+                    <p className="text-[10px] font-bold text-warm-600 uppercase tracking-wide">Novo Checklist</p>
+                    <div className="flex gap-2">
+                      <input type="text" value={newChecklistTitle} onChange={e => setNewChecklistTitle(e.target.value)}
+                        placeholder="Nome do checklist *"
+                        className="flex-1 bg-warm-100 border border-warm-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
+                      <button disabled={!newChecklistTitle.trim()}
+                        onClick={async () => {
+                          if (!newChecklistTitle.trim()) return;
+                          await onCreateChecklist(subtask.id, newChecklistTitle.trim());
+                          setNewChecklistTitle('');
+                          setChecklistFormSubtaskId(null);
+                        }}
+                        className="bg-brand-500 text-warm-900 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-brand-400 disabled:opacity-50">
+                        Criar
+                      </button>
+                      <button onClick={() => { setChecklistFormSubtaskId(null); setNewChecklistTitle(''); }}
+                        className="px-2 py-1 text-xs text-warm-500 hover:text-warm-700">✕</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Checklists da subtarefa */}
+                {subtaskChecklists.length > 0 && (
+                  <div className="px-3 pb-3 space-y-2">
+                    {subtaskChecklists.map(cl => {
+                      const items = cl.checklist_items || [];
+                      const done = items.filter(i => i.completed).length;
+                      const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+                      return (
+                        <div key={cl.id} className="bg-warm-50 border border-warm-200 rounded-lg p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-semibold text-warm-800">{cl.title}</p>
+                              {items.length > 0 && (
+                                <span className="text-[10px] font-mono text-emerald-600">{done}/{items.length} ({pct}%)</span>
+                              )}
+                            </div>
+                            <button onClick={() => onDeleteChecklist(cl.id)} className="p-0.5 text-warm-400 hover:text-red-500 transition-colors">
+                              <X size={11} />
+                            </button>
+                          </div>
+                          {items.length > 0 && (
+                            <div className="w-full bg-warm-200 rounded-full h-1">
+                              <div className="bg-emerald-400 h-1 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                          )}
+                          <div className="space-y-1.5 pl-1">
+                            {items.map(item => (
+                              <div key={item.id} className="flex items-center gap-2 group text-xs">
+                                <button onClick={() => onToggleChecklistItem(item.id, !item.completed)}
+                                  className="text-warm-500 hover:text-brand-500 flex-shrink-0 transition-colors">
+                                  {item.completed
+                                    ? <CheckSquare size={12} className="text-emerald-500" />
+                                    : <Square size={12} />}
+                                </button>
+                                <span className={`flex-1 ${item.completed ? 'line-through text-warm-400' : 'text-warm-700'}`}>{item.title}</span>
+                                <button onClick={() => onDeleteChecklistItem(item.id)}
+                                  className="p-0.5 text-warm-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                  <X size={9} />
+                                </button>
+                              </div>
+                            ))}
+                            <div className="flex items-center gap-2 pt-1 border-t border-warm-200/60">
+                              <Plus size={11} className="text-warm-400 flex-shrink-0" />
+                              <input type="text"
+                                value={newItemInput[cl.id] || ''}
+                                onChange={e => setNewItemInput({ ...newItemInput, [cl.id]: e.target.value })}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && (newItemInput[cl.id] || '').trim()) {
+                                    onAddChecklistItem(cl.id, newItemInput[cl.id]);
+                                    setNewItemInput({ ...newItemInput, [cl.id]: '' });
+                                  }
+                                }}
+                                placeholder="Adicionar item..."
+                                className="flex-1 bg-transparent text-xs text-warm-700 outline-none placeholder-warm-400"
+                              />
+                              {(newItemInput[cl.id] || '').trim() && (
+                                <button onClick={() => {
+                                  onAddChecklistItem(cl.id, newItemInput[cl.id]);
+                                  setNewItemInput({ ...newItemInput, [cl.id]: '' });
+                                }} className="text-[10px] font-semibold text-brand-600 hover:underline">
+                                  Adicionar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -240,7 +400,8 @@ function OSTaskCard({ task, checklists, onDeleteTask, onToggleChecklistItem, onD
 // ── OS Detail View ───────────────────────────────────────────────────────────
 
 function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProject }) {
-  const osTasks = (proj.tasks || []).filter(t => t.service_order_id === os.id);
+  const allOSTasks = (proj.tasks || []).filter(t => t.service_order_id === os.id);
+  const osTasks = allOSTasks.filter(t => !t.parent_task_id);
   const allChecklists = proj.checklists || [];
 
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -307,8 +468,9 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Excluir esta tarefa e seus checklists?')) return;
+    if (!window.confirm('Excluir esta tarefa, subtarefas e checklists?')) return;
     try {
+      await supabase.from('tasks').delete().eq('parent_task_id', taskId);
       const { error } = await supabase.from('tasks').delete().eq('id', taskId);
       if (error) throw error;
       await refreshProject();
@@ -359,6 +521,68 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
       await refreshProject();
     } catch (err) {
       console.error('Erro ao adicionar item:', err);
+    }
+  };
+
+  const handleCreateSubtask = async (parentTaskId, data) => {
+    try {
+      const { error } = await supabase.from('tasks').insert({
+        project_id: proj.id,
+        user_id: proj.user_id,
+        service_order_id: os.id,
+        parent_task_id: parentTaskId,
+        title: data.title,
+        description: data.description || null,
+        due_date: data.due_date || null,
+        difficulty: data.difficulty || null,
+        status: 'todo',
+        task_type: 'technical',
+      });
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao criar subtarefa:', err);
+      alert('Erro ao criar subtarefa: ' + err.message);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId) => {
+    if (!window.confirm('Excluir esta subtarefa e seus checklists?')) return;
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', subtaskId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao excluir subtarefa:', err);
+    }
+  };
+
+  const handleCreateChecklist = async (taskId, title) => {
+    try {
+      const { error } = await supabase.from('checklists').insert({
+        project_id: proj.id,
+        user_id: proj.user_id,
+        task_id: taskId,
+        title: title.trim(),
+        status: 'todo',
+        priority: 'normal',
+      });
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao criar checklist:', err);
+      alert('Erro ao criar checklist: ' + err.message);
+    }
+  };
+
+  const handleDeleteChecklist = async (clId) => {
+    if (!window.confirm('Excluir este checklist?')) return;
+    try {
+      const { error } = await supabase.from('checklists').delete().eq('id', clId);
+      if (error) throw error;
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao excluir checklist:', err);
     }
   };
 
@@ -705,12 +929,17 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
             <OSTaskCard
               key={task.id}
               task={task}
-              checklists={allChecklists.filter(c => c.task_id === task.id)}
+              allTasks={allOSTasks}
+              allChecklists={allChecklists}
               onDeleteTask={handleDeleteTask}
+              onDeleteSubtask={handleDeleteSubtask}
               onUpdateTaskStatus={handleUpdateTaskStatus}
               onToggleChecklistItem={handleToggleChecklistItem}
               onDeleteChecklistItem={handleDeleteChecklistItem}
               onAddChecklistItem={handleAddChecklistItem}
+              onCreateSubtask={handleCreateSubtask}
+              onCreateChecklist={handleCreateChecklist}
+              onDeleteChecklist={handleDeleteChecklist}
             />
           ))}
         </div>
