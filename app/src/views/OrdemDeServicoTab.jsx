@@ -56,6 +56,7 @@ const Badge = ({ color = 'slate', children }) => {
 
 const OS_STATUS_CONFIG = {
   draft:    { label: 'Rascunho',  color: 'slate',  icon: FileText },
+  proposal: { label: 'Proposta',  color: 'violet', icon: FileText },
   pending:  { label: 'Pendente',  color: 'yellow', icon: Clock },
   approved: { label: 'Aprovada',  color: 'green',  icon: CheckCircle2 },
   declined: { label: 'Declinada', color: 'red',    icon: AlertCircle },
@@ -87,6 +88,7 @@ function OSStatusBadge({ status }) {
       ${cfg.color === 'green'  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
         cfg.color === 'yellow' ? 'bg-amber-50 text-amber-700 border-amber-100' :
         cfg.color === 'red'    ? 'bg-red-50 text-red-600 border-red-100' :
+        cfg.color === 'violet' ? 'bg-violet-50 text-violet-600 border-violet-100' :
                                  'bg-warm-200 text-warm-500 border-warm-300'}`}>
       <Icon size={10} />
       {cfg.label}
@@ -631,6 +633,7 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
   const [editInternalNotes, setEditInternalNotes] = useState(os.internal_notes || '');
 
   const isApproved = os.status === 'approved';
+  const canCreateTasks = os.status === 'approved' || os.status === 'proposal';
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -871,14 +874,28 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
     : (os.progress_percent || 0);
 
   const STATUS_TRANSITIONS = {
-    draft:    [{ to: 'pending',  label: 'Enviar para Aprovação', variant: 'secondary' }],
+    draft:    [
+      { to: 'proposal', label: 'Mudar para Proposta', variant: 'secondary' },
+      { to: 'pending',  label: 'Enviar para Aprovação', variant: 'secondary' }
+    ],
+    proposal: [
+      { to: 'approved', label: 'Aprovar OS', variant: 'success' },
+      { to: 'declined', label: 'Declinar', variant: 'danger' },
+      { to: 'draft',    label: 'Voltar a Rascunho', variant: 'ghost' },
+    ],
     pending:  [
       { to: 'approved', label: 'Aprovar OS', variant: 'success' },
       { to: 'declined', label: 'Declinar', variant: 'danger' },
       { to: 'draft',    label: 'Voltar a Rascunho', variant: 'ghost' },
     ],
-    approved: [{ to: 'declined', label: 'Encerrar OS', variant: 'danger' }],
-    declined: [],
+    approved: [
+      { to: 'proposal', label: 'Voltar para Proposta', variant: 'secondary' },
+      { to: 'declined', label: 'Encerrar OS', variant: 'danger' },
+    ],
+    declined: [
+      { to: 'proposal', label: 'Voltar para Proposta', variant: 'secondary' },
+      { to: 'draft',    label: 'Voltar a Rascunho', variant: 'ghost' },
+    ],
   };
 
   const transitions = STATUS_TRANSITIONS[os.status] || [];
@@ -1074,7 +1091,7 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
               </span>
             )}
           </h4>
-          {isApproved ? (
+          {canCreateTasks ? (
             <Button variant={showTaskForm ? 'outline' : 'primary'} icon={showTaskForm ? null : Plus}
               onClick={() => setShowTaskForm(!showTaskForm)}>
               {showTaskForm ? 'Cancelar' : 'Nova Tarefa'}
@@ -1087,14 +1104,27 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
           )}
         </div>
 
-        {/* Aviso de OS não aprovada */}
-        {!isApproved && (
+        {/* Aviso de OS em proposta ou bloqueada */}
+        {os.status === 'proposal' && (
+          <div className="bg-violet-50 border border-violet-200 rounded-2xl p-5 flex items-start gap-3">
+            <Info size={18} className="text-violet-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-violet-850">OS em modo de Proposta</p>
+              <p className="text-xs text-violet-700 mt-0.5">
+                As tarefas e subtarefas criadas nesta OS ficarão aguardando a aprovação do cliente.
+                Elas <strong>não aparecerão</strong> no Kanban ou no Overview até que a OS seja <strong>aprovada</strong>.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!canCreateTasks && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
             <Lock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-amber-800">Criação de tarefas bloqueada</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Só é possível adicionar tarefas após a OS ser <strong>aprovada</strong>.
+                Só é possível adicionar tarefas após a OS estar em status de <strong>proposta</strong> ou ser <strong>aprovada</strong>.
                 Altere o status da OS para continuar.
               </p>
             </div>
@@ -1102,7 +1132,7 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
         )}
 
         {/* Formulário de Nova Tarefa */}
-        {isApproved && showTaskForm && (
+        {canCreateTasks && showTaskForm && (
           <Card className="p-5">
             <form onSubmit={handleCreateTask} className="space-y-4">
               <h5 className="font-semibold text-xs text-warm-800 uppercase tracking-wider">Nova Tarefa</h5>
@@ -1158,7 +1188,7 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
         )}
 
         {/* Lista de Tarefas */}
-        {osTasks.length === 0 && isApproved && !showTaskForm && (
+        {osTasks.length === 0 && canCreateTasks && !showTaskForm && (
           <div className="text-center py-12 text-warm-500 bg-warm-50 rounded-2xl border border-warm-300/40 border-dashed">
             <ClipboardList size={32} className="mx-auto mb-3 text-warm-300" />
             <p className="text-sm font-medium">Nenhuma tarefa nesta OS ainda.</p>
@@ -1398,7 +1428,7 @@ function OSCard({ os, onSelect, onDelete }) {
             </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-warm-200 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-700 ${os.status === 'approved' ? 'bg-brand-500' : 'bg-warm-400'}`}
+                <div className={`h-full rounded-full transition-all duration-700 ${(os.status === 'approved' || os.status === 'proposal') ? 'bg-brand-500' : 'bg-warm-400'}`}
                   style={{ width: `${pct}%` }} />
               </div>
               <span className="font-mono font-bold text-warm-700 text-[10px]">{pct}%</span>

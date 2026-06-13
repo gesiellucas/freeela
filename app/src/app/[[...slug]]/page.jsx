@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import {
   Users,
   Briefcase,
@@ -58,7 +59,7 @@ import {
   updateTaskStatus as updateTaskStatusAPI,
   advanceProjectWorkflow,
   createPayment,
-declineProposal,
+  declineProposal,
   declineProject as declineProjectAPI,
   archiveProject as archiveProjectAPI,
   deleteProject as deleteProjectAPI,
@@ -89,23 +90,22 @@ declineProposal,
   createNewClient as createClientAPI,
   updateClient as updateClientAPI,
   deleteClient as deleteClientAPI,
-} from '../lib/supabase';
+} from '../../lib/supabase';
 
-import PainelView from '../views/PainelView';
-import LeadsView from '../views/LeadsView';
-import ProjetosView from '../views/ProjetosView';
-import AreaFiscalView from '../views/AreaFiscalView';
-import FinanceiroView from '../views/FinanceiroView';
-import PropostasView from '../views/PropostasView';
-import ContratosView from '../views/ContratosView';
-import PomodoroView from '../views/PomodoroView';
-import OverviewView from '../views/OverviewView';
-import EapView from '../views/EapView';
-import CronogramaView from '../views/CronogramaView';
-import ClientesView from '../views/ClientesView';
+import PainelView from '../../views/PainelView';
+import LeadsView from '../../views/LeadsView';
+import ProjetosView from '../../views/ProjetosView';
+import AreaFiscalView from '../../views/AreaFiscalView';
+import FinanceiroView from '../../views/FinanceiroView';
+import PropostasView from '../../views/PropostasView';
+import ContratosView from '../../views/ContratosView';
+import PomodoroView from '../../views/PomodoroView';
+import OverviewView from '../../views/OverviewView';
+import EapView from '../../views/EapView';
+import CronogramaView from '../../views/CronogramaView';
+import ClientesView from '../../views/ClientesView';
 
 // --- Constantes e Templates ---
-
 
 const WORKFLOW_STEPS = [
   { id: 1, label: "Contato Inicial", key: "initial_contact", icon: <Users size={16} />, desc: "Registro do lead e e-mail de boas-vindas" },
@@ -324,6 +324,10 @@ const LoginModal = ({ isOpen, onLoginSuccess }) => {
 // --- App Principal ---
 
 export default function App() {
+  const router = useRouter();
+  const params = useParams();
+  const slug = params?.slug;
+
   // Authentication State
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -361,6 +365,47 @@ export default function App() {
   const [newLead, setNewLead] = useState({ name: '', email: '', demand: '', value: '' });
   const [declineReason, setDeclineReason] = useState('');
   const [declineProjectReason, setDeclineProjectReason] = useState('');
+
+  // Sync state with URL slug
+  useEffect(() => {
+    if (!slug || slug.length === 0) {
+      setActiveTab('painel');
+      setSelectedProject(null);
+    } else {
+      const tab = slug[0];
+      if (tab === 'projeto' && slug.length >= 2) {
+        const projectId = slug[1];
+        setActiveTab('projects');
+        const proj = projects.find(p => p.id === projectId);
+        if (proj) {
+          setSelectedProject(proj);
+        }
+      } else {
+        setActiveTab(tab);
+        setSelectedProject(null);
+      }
+    }
+  }, [slug, projects]);
+
+  const handleTabChange = (tabId) => {
+    if (tabId === 'painel') {
+      router.push('/');
+    } else {
+      router.push(`/${tabId}`);
+    }
+  };
+
+  const handleSelectProject = (project) => {
+    if (project) {
+      if (slug && slug.length >= 3 && slug[2] === 'tarefas') {
+        router.push(`/projeto/${project.id}/tarefas`);
+      } else {
+        router.push(`/projeto/${project.id}`);
+      }
+    } else {
+      router.push('/projects');
+    }
+  };
 
   // Verificar autenticação ao carregar
   useEffect(() => {
@@ -655,11 +700,11 @@ export default function App() {
         // Recarregar projetos
         await loadAllData();
 
-        // Selecionar o novo projeto
+        // Selecionar o novo projeto e navegar
         if (data.project) {
           const { data: fullProject } = await getProjectById(data.project.id);
           setSelectedProject(fullProject);
-          setActiveTab('projects');
+          router.push(`/projeto/${data.project.id}`);
         }
       }
     } catch (err) {
@@ -680,10 +725,10 @@ export default function App() {
         // Recarregar projetos
         await loadAllData();
 
-        // Selecionar o novo projeto
+        // Selecionar o novo projeto e navegar
         const { data: fullProject } = await getProjectById(data.id);
         setSelectedProject(fullProject);
-        setActiveTab('projects');
+        router.push(`/projeto/${data.id}`);
       }
     } catch (err) {
       console.error('Erro ao criar projeto direto:', err);
@@ -873,13 +918,12 @@ export default function App() {
     const client = clients.find(c => c.id === clientId);
     if (client) {
       setClientToView(client);
-      setActiveTab('clientes');
+      router.push('/clientes');
     }
   };
 
   const handleViewProjectFromClient = (project) => {
-    setSelectedProject(project);
-    setActiveTab('projects');
+    router.push(`/projeto/${project.id}`);
   };
 
   const handleLogout = async () => {
@@ -896,6 +940,7 @@ export default function App() {
     setContracts([]);
     setFiscalNotes([]);
     setSelectedProject(null);
+    router.push('/');
   };
 
   // --- Views ---
@@ -920,8 +965,8 @@ export default function App() {
   }
 
   const logoText = (
-    <img src="/logo.png" alt="Freeela" className="w-full h-10 p-1 object-contain" />
-  )
+    <img src="/logo.png" alt="Freeela" className="w-full h-10 p-1 object-contain cursor-pointer" onClick={() => handleTabChange('painel')} />
+  );
 
   return (
     <div className="min-h-screen bg-warm-100 text-warm-900 font-sans">
@@ -946,7 +991,7 @@ export default function App() {
           ].map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => handleTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                 ${activeTab === item.id
                   ? 'bg-brand-500 text-warm-900 font-semibold shadow-brand'
@@ -976,7 +1021,7 @@ export default function App() {
                 ].map(item => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleTabChange(item.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                       ${activeTab === item.id
                         ? 'bg-brand-500 text-warm-900 font-semibold'
@@ -1009,7 +1054,7 @@ export default function App() {
                 ].map(item => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleTabChange(item.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium
                       ${activeTab === item.id
                         ? 'bg-brand-500 text-warm-900 font-semibold'
@@ -1026,7 +1071,6 @@ export default function App() {
         </nav>
 
         <div className="p-3 border-t border-warm-300 space-y-2">
-
           <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-warm-500 hover:text-warm-800 hover:bg-warm-200 transition-all text-sm font-medium">
             <LogOut size={15} />
             <span>Sair</span>
@@ -1107,7 +1151,7 @@ export default function App() {
                   filter={projectsFilter}
                   onFilterChange={setProjectsFilter}
                   selectedProject={selectedProject}
-                  onSelectProject={setSelectedProject}
+                  onSelectProject={handleSelectProject}
                   onCreateProjectDirectly={handleCreateProjectDirectly}
                   onDeclineProject={openDeclineProjectModal}
                   onArchiveProject={handleArchiveProject}
@@ -1140,7 +1184,7 @@ export default function App() {
                 <FinanceiroView
                   projects={projects}
                   contracts={contracts}
-                  onSelectProject={(p) => { setSelectedProject(p); setActiveTab('projects'); }}
+                  onSelectProject={(p) => { router.push(`/projeto/${p.id}`); }}
                 />
               )}
               {activeTab === 'propostas' && (

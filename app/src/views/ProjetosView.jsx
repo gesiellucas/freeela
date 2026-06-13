@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Briefcase, X, Users, CreditCard, FolderOpen,
   CheckCircle2, ChevronDown, ChevronRight, Calendar, ShieldCheck,
@@ -1077,7 +1078,30 @@ export default function ProjetosView({
   onViewClient,
   clients = [],
 }) {
+  const router = useRouter();
+  const params = useParams();
+  const slug = params?.slug;
+
   const [subTab, setSubTab] = useState('informacoes');
+
+  useEffect(() => {
+    if (slug && slug[0] === 'projeto' && slug.length >= 3) {
+      if (slug[2] === 'tarefas') {
+        setSubTab('kanban');
+      }
+    }
+  }, [slug]);
+
+  const handleSubTabChange = (key) => {
+    setSubTab(key);
+    if (selectedProject?.id) {
+      if (key === 'kanban') {
+        router.push(`/projeto/${selectedProject.id}/tarefas`);
+      } else {
+        router.push(`/projeto/${selectedProject.id}`);
+      }
+    }
+  };
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({ clientName: '', clientEmail: '', title: '', value: '' });
   const [clientMode, setClientMode] = useState('existing'); // 'existing' | 'new'
@@ -1247,6 +1271,34 @@ export default function ProjetosView({
   const checklists = proj ? (proj.checklists || []) : [];
   const payments   = proj ? (proj.payments || []) : [];
 
+  const kanbanItems = useMemo(() => [
+    ...tasks.map(t => ({ ...t, _type: 'task' })),
+    ...checklists.map(c => ({ ...c, _type: 'checklist' })),
+  ], [tasks, checklists]);
+
+  const visibleKanbanItems = useMemo(() => {
+    const serviceOrders = proj?.service_orders || [];
+    return kanbanItems.filter(item => {
+      if (item._type === 'task') {
+        if (item.service_order_id) {
+          const os = serviceOrders.find(o => o.id === item.service_order_id);
+          return os ? os.status === 'approved' : false;
+        }
+        return true;
+      } else if (item._type === 'checklist') {
+        if (item.task_id) {
+          const task = tasks.find(t => t.id === item.task_id);
+          if (task && task.service_order_id) {
+            const os = serviceOrders.find(o => o.id === task.service_order_id);
+            return os ? os.status === 'approved' : false;
+          }
+        }
+        return true;
+      }
+      return true;
+    });
+  }, [kanbanItems, proj?.service_orders, tasks]);
+
   // --- Carregamento de Itens da EAP para tarefas ---
   const [eapItems, setEapItems] = useState([]);
 
@@ -1329,11 +1381,6 @@ export default function ProjetosView({
     const pendingTotal = Math.max(0, (proj.value || 0) - paidTotal);
     const paidPct = proj.value ? Math.min(100, Math.round((paidTotal / proj.value) * 100)) : 0;
 
-    const kanbanItems = [
-      ...tasks.map(t => ({ ...t, _type: 'task' })),
-      ...checklists.map(c => ({ ...c, _type: 'checklist' })),
-    ];
-
     return (
       <div className="space-y-6 animate-in fade-in font-sans">
         {/* Project header */}
@@ -1380,7 +1427,7 @@ export default function ProjetosView({
             { key: 'financeiro',       label: 'Financeiro',       icon: DollarSign },
             { key: 'acordo-comercial', label: 'Acordo Comercial', icon: FileSignature },
           ].map(tab => (
-            <button key={tab.key} onClick={() => setSubTab(tab.key)}
+            <button key={tab.key} onClick={() => handleSubTabChange(tab.key)}
               className={`pb-3 px-4 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex-shrink-0 flex items-center gap-1.5
                 ${subTab === tab.key
                   ? 'border-brand-500 text-warm-900 font-semibold'
@@ -1595,7 +1642,7 @@ export default function ProjetosView({
               { status: 'waiting', label: 'Aguardando',   color: 'text-blue-500',    dot: 'bg-blue-400',    prev: 'doing',   next: 'done' },
               { status: 'done',    label: 'Concluido',    color: 'text-emerald-500', dot: 'bg-emerald-400', prev: 'waiting', next: null },
             ].map(col => {
-              const colTasks = kanbanItems.filter(t => t.status === col.status);
+              const colTasks = visibleKanbanItems.filter(t => t.status === col.status);
               return (
                 <div key={col.status} className="flex flex-col gap-3">
                   <div className="flex items-center gap-2 px-1">

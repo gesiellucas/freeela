@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   CheckSquare,
   ChevronDown,
+  ChevronRight,
   Clock,
   Code2,
   Flame,
@@ -165,12 +166,12 @@ const StatusPill = ({ status }) => {
 };
 
 const DueDateChip = ({ dateStr, status, literal = false }) => {
-  if (!dateStr) return <span className="text-warm-300 text-xs">—</span>;
+  if (!dateStr) return <span className="text-warm-300 text-xs whitespace-nowrap">—</span>;
   const label = literal ? formatDateLiteral(dateStr) : formatDateLabel(dateStr);
   const over = isOverdue(dateStr) && status !== 'done';
   const tod  = isToday(dateStr)   && status !== 'done';
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${over ? 'text-red-500' : tod ? 'text-amber-500' : 'text-warm-400'}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold whitespace-nowrap ${over ? 'text-red-500' : tod ? 'text-amber-500' : 'text-warm-400'}`}>
       {over && <AlertTriangle size={9} />}
       {tod && !over && <Flame size={9} />}
       {label}
@@ -199,7 +200,7 @@ const StatChip = ({ icon: Icon, value, label, scheme }) => {
 
 // ─── Bloco Foco do Dia ────────────────────────────────────────────────────────
 
-const FocusDoDia = ({ tasks, onMarkDoing, onMarkDone }) => (
+const FocusDoDia = ({ tasks, onMarkDoing, onMarkDone, onMarkTask }) => (
   <div className="bg-warm-50 border border-warm-300/60 rounded-2xl shadow-card overflow-hidden h-full flex flex-col">
     <div className="px-5 py-4 border-b border-warm-200 flex items-center gap-2 flex-shrink-0">
       <Zap size={14} className="text-brand-500" />
@@ -258,6 +259,15 @@ const FocusDoDia = ({ tasks, onMarkDoing, onMarkDone }) => (
                   <Play size={10} />
                 </button>
               )}
+              {task.status === 'doing' && (
+                <button
+                  onClick={() => onMarkTask(task.id, task.project_id, 'waiting')}
+                  className="p-1 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 transition-colors"
+                  title="Colocar em Aguardando"
+                >
+                  <Clock size={10} />
+                </button>
+              )}
               {task.status !== 'done' && (
                 <button
                   onClick={() => onMarkDone(task.id, task.project_id)}
@@ -298,7 +308,7 @@ function applyFilter(tasks, filterId) {
   }
 }
 
-const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone }) => {
+const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask }) => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [stackFilter, setStackFilter]   = useState('');
 
@@ -425,6 +435,15 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone }) => {
                       title="Marcar como Fazendo"
                     >
                       <Play size={11} />
+                    </button>
+                  )}
+                  {task.status === 'doing' && (
+                    <button
+                      onClick={() => onMarkTask(task.id, task.project_id, 'waiting')}
+                      className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 transition-colors"
+                      title="Colocar em Aguardando"
+                    >
+                      <Clock size={11} />
                     </button>
                   )}
                   {task.status !== 'done' && (
@@ -555,18 +574,75 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
   const [sortDirection, setSortDirection] = useState('asc');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [tempDate, setTempDate] = useState('');
+  const [expandedTasks, setExpandedTasks] = useState(new Set());
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-      const matchesProject = projectFilter === 'all' || task.project?.id === projectFilter;
-      return matchesSearch && matchesStatus && matchesProject;
+  const toggleExpand = (taskId) => {
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
     });
-  }, [tasks, searchTerm, statusFilter, projectFilter]);
+  };
 
-  const sortedTasks = useMemo(() => {
-    return [...filteredTasks].sort((a, b) => {
+  const visibleParents = useMemo(() => {
+    // Filter tasks by project first
+    const projectTasks = tasks.filter(t => projectFilter === 'all' || t.project?.id === projectFilter);
+    
+    // Create a map of all tasks for quick access
+    const tasksMap = new Map(projectTasks.map(t => [t.id, t]));
+
+    // Determine which tasks match the status and search criteria
+    const matchingTasks = projectTasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all'
+        ? task.status !== 'done'
+        : task.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+
+    // Set of parent task IDs that should be visible
+    const parentIdsToShow = new Set();
+
+    matchingTasks.forEach(task => {
+      if (task.parent_task_id && tasksMap.has(task.parent_task_id)) {
+        // It's a child task, so its parent needs to be shown
+        parentIdsToShow.add(task.parent_task_id);
+      } else {
+        // It's a top-level task
+        parentIdsToShow.add(task.id);
+      }
+    });
+
+    // Now build the list of parent tasks to display
+    const parents = [];
+    projectTasks.forEach(task => {
+      // It's a top-level task that we decided to show
+      if (!task.parent_task_id && parentIdsToShow.has(task.id)) {
+        const allChildren = projectTasks.filter(t => t.parent_task_id === task.id);
+        const childrenToShow = (statusFilter === 'all' && !searchTerm) 
+          ? allChildren.filter(c => c.status !== 'done')
+          : allChildren.filter(c => {
+              const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase());
+              const matchesStatus = statusFilter === 'all'
+                ? c.status !== 'done'
+                : c.status === statusFilter;
+              return matchesSearch && matchesStatus;
+            });
+
+        parents.push({
+          ...task,
+          children: childrenToShow,
+          hasChildren: allChildren.length > 0
+        });
+      }
+    });
+
+    // Sort parents
+    parents.sort((a, b) => {
       let aVal = '';
       let bVal = '';
 
@@ -588,7 +664,9 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [filteredTasks, sortField, sortDirection]);
+
+    return parents;
+  }, [tasks, searchTerm, statusFilter, projectFilter, sortField, sortDirection]);
 
   const toggleSort = (field) => {
     if (sortField === field) {
@@ -606,6 +684,18 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
     { id: 'waiting', label: 'Aguardando' },
     { id: 'done', label: 'Concluído' },
   ];
+
+  const isSearchingOrFiltering = searchTerm !== '' || statusFilter !== 'all';
+
+  const totalVisibleCount = useMemo(() => {
+    let count = visibleParents.length;
+    visibleParents.forEach(p => {
+      if (p.hasChildren && (expandedTasks.has(p.id) || isSearchingOrFiltering)) {
+        count += p.children.length;
+      }
+    });
+    return count;
+  }, [visibleParents, expandedTasks, searchTerm, statusFilter]);
 
   return (
     <div className="bg-warm-50 border border-warm-300/60 rounded-2xl shadow-card overflow-hidden">
@@ -696,7 +786,7 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
         <table className="w-full border-collapse text-left min-w-[600px]">
           <thead>
             <tr className="bg-warm-100 border-b border-warm-200 text-[10px] font-bold text-warm-500 uppercase tracking-wider select-none">
-              <th className="py-2.5 px-4 cursor-pointer hover:bg-warm-200/50 transition-colors" onClick={() => toggleSort('project')}>
+              <th className="py-2.5 px-4 cursor-pointer hover:bg-warm-200/50 transition-colors w-28" onClick={() => toggleSort('project')}>
                 <div className="flex items-center gap-1">
                   Projeto
                   {sortField === 'project' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
@@ -724,7 +814,7 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
             </tr>
           </thead>
           <tbody className="divide-y divide-warm-100 text-sm">
-            {sortedTasks.length === 0 ? (
+            {visibleParents.length === 0 ? (
               <tr>
                 <td colSpan="5" className="text-center py-12">
                   <CheckSquare size={24} className="mx-auto text-warm-300 mb-2 opacity-50" />
@@ -733,108 +823,260 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                 </td>
               </tr>
             ) : (
-              sortedTasks.map(task => {
-                const over = isOverdue(task.due_date) && task.status !== 'done';
+              visibleParents.map(parent => {
+                const parentOver = isOverdue(parent.due_date) && parent.status !== 'done';
+                const isExpanded = expandedTasks.has(parent.id) || isSearchingOrFiltering;
+
                 return (
-                  <tr 
-                    key={task.id} 
-                    className={`hover:bg-warm-100/30 transition-colors group ${over ? 'bg-red-50/10' : ''}`}
-                  >
-                    {/* Coluna Projeto */}
-                    <td className="py-3 px-4 text-warm-600 font-medium">
-                      {task.project?.title || '—'}
-                    </td>
+                  <React.Fragment key={parent.id}>
+                    {/* Linha do Pai */}
+                    <tr 
+                      className={`hover:bg-warm-100/30 transition-colors group ${parentOver ? 'bg-red-50/10' : ''}`}
+                    >
+                      {/* Coluna Projeto */}
+                      <td className="py-3 px-4 text-warm-600 font-medium max-w-[120px] truncate" title={parent.project?.title || ''}>
+                        {parent.project?.title || '—'}
+                      </td>
 
-                    {/* Coluna Tarefa */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <PriorityDot priority={task.priority} />
-                        <span className="font-semibold text-warm-900 leading-tight">{task.title}</span>
-                      </div>
-                    </td>
-
-                    {/* Coluna Data */}
-                    <td className="py-3 px-4">
-                      {editingTaskId === task.id ? (
-                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="datetime-local"
-                            value={tempDate}
-                            onChange={(e) => setTempDate(e.target.value)}
-                            className="bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs text-warm-800 outline-none focus:border-brand-500 transition-all font-sans font-semibold"
-                          />
-                          <button
-                            onClick={() => {
-                              onUpdateTaskDate(task.id, task.project_id, tempDate);
-                              setEditingTaskId(null);
-                            }}
-                            className="p-1.5 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                            title="Confirmar"
-                          >
-                            <Check size={12} />
-                          </button>
-                          <button
-                            onClick={() => setEditingTaskId(null)}
-                            className="p-1.5 bg-warm-200 hover:bg-warm-300 text-warm-600 border border-warm-300 rounded-lg transition-colors"
-                            title="Cancelar"
-                          >
-                            <X size={12} />
-                          </button>
+                      {/* Coluna Tarefa */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          {parent.hasChildren ? (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(parent.id);
+                              }}
+                              className="p-1 rounded hover:bg-warm-200 transition-colors text-warm-500"
+                              title={isExpanded ? 'Recolher subtarefas' : 'Expandir subtarefas'}
+                            >
+                              <ChevronDown 
+                                size={14} 
+                                className={`transition-transform duration-205 ${isExpanded ? '' : '-rotate-90'}`} 
+                              />
+                            </button>
+                          ) : (
+                            <div className="w-6" />
+                          )}
+                          <PriorityDot priority={parent.priority} />
+                          <span className="font-semibold text-warm-900 leading-tight">{parent.title}</span>
+                          {parent.hasChildren && (
+                            <span className="text-[9px] text-warm-500 bg-warm-200 px-1.5 py-0.5 rounded-full font-bold ml-1 whitespace-nowrap">
+                              {parent.children.length} {parent.children.length === 1 ? 'subtarefa' : 'subtarefas'}
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTaskId(task.id);
-                            setTempDate(task.due_date ? toDatetimeLocalString(task.due_date) : '');
-                          }}
-                          className="inline-flex items-center gap-1.5 hover:bg-warm-200/60 px-2 py-1 rounded-lg border border-transparent hover:border-warm-300/40 text-left transition-all group/date"
-                          title="Clique para alterar a data e hora"
-                        >
-                          <DueDateChip dateStr={task.due_date} status={task.status} literal={true} />
-                          <Calendar size={11} className="text-warm-400 opacity-0 group-hover/date:opacity-100 transition-opacity" />
-                        </button>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* Coluna Status */}
-                    <td className="py-3 px-4">
-                      <StatusPill status={task.status} />
-                    </td>
+                      {/* Coluna Data */}
+                      <td className="py-3 px-4">
+                        {editingTaskId === parent.id ? (
+                          <div className="flex items-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="datetime-local"
+                              value={tempDate}
+                              onChange={(e) => setTempDate(e.target.value)}
+                              className="bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs text-warm-800 outline-none focus:border-brand-500 transition-all font-sans font-semibold"
+                            />
+                            <button
+                              onClick={() => {
+                                onUpdateTaskDate(parent.id, parent.project_id, tempDate);
+                                setEditingTaskId(null);
+                              }}
+                              className="p-1.5 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                              title="Confirmar"
+                            >
+                              <Check size={12} />
+                            </button>
+                            <button
+                              onClick={() => setEditingTaskId(null)}
+                              className="p-1.5 bg-warm-200 hover:bg-warm-300 text-warm-600 border border-warm-300 rounded-lg transition-colors"
+                              title="Cancelar"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTaskId(parent.id);
+                              setTempDate(parent.due_date ? toDatetimeLocalString(parent.due_date) : '');
+                            }}
+                            className="inline-flex items-center gap-1.5 hover:bg-warm-200/60 px-2 py-1 rounded-lg border border-transparent hover:border-warm-300/40 text-left transition-all group/date"
+                            title="Clique para alterar a data e hora"
+                          >
+                            <DueDateChip dateStr={parent.due_date} status={parent.status} literal={true} />
+                            <Calendar size={11} className="text-warm-400 opacity-0 group-hover/date:opacity-100 transition-opacity" />
+                          </button>
+                        )}
+                      </td>
 
-                    {/* Coluna Ações */}
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {task.status !== 'doing' && task.status !== 'done' && (
-                          <button
-                            onClick={() => onMarkDoing(task.id, task.project_id)}
-                            className="p-1 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 border border-blue-200 transition-colors"
-                            title="Marcar como Fazendo"
+                      {/* Coluna Status */}
+                      <td className="py-3 px-4">
+                        <StatusPill status={parent.status} />
+                      </td>
+
+                      {/* Coluna Ações */}
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {parent.status !== 'doing' && parent.status !== 'done' && (
+                            <button
+                              onClick={() => onMarkDoing(parent.id, parent.project_id)}
+                              className="p-1 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 border border-blue-200 transition-colors"
+                              title="Marcar como Fazendo"
+                            >
+                              <Play size={10} />
+                            </button>
+                          )}
+                          {parent.status === 'doing' && (
+                            <button
+                              onClick={() => onMarkTask(parent.id, parent.project_id, 'waiting')}
+                              className="p-1 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 transition-colors"
+                              title="Colocar em Aguardando"
+                            >
+                              <Clock size={10} />
+                            </button>
+                          )}
+                          {parent.status !== 'done' && (
+                            <button
+                              onClick={() => onMarkDone(parent.id, parent.project_id)}
+                              className="p-1 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                              title="Marcar como Concluído"
+                            >
+                              <CheckCircle2 size={10} />
+                            </button>
+                          )}
+                          {parent.status === 'done' && (
+                            <button
+                              onClick={() => onMarkTask(parent.id, parent.project_id, 'todo')}
+                              className="p-1 rounded-lg bg-warm-200 text-warm-600 hover:bg-warm-300 border border-warm-300 transition-colors"
+                              title="Reabrir tarefa"
+                            >
+                              <Clock size={10} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Linhas dos Filhos */}
+                    {parent.hasChildren && isExpanded && (
+                      parent.children.map(child => {
+                        const childOver = isOverdue(child.due_date) && child.status !== 'done';
+                        return (
+                          <tr 
+                            key={child.id}
+                            className={`hover:bg-warm-100/20 bg-warm-100/10 transition-colors group ${childOver ? 'bg-red-50/5' : ''}`}
                           >
-                            <Play size={10} />
-                          </button>
-                        )}
-                        {task.status !== 'done' && (
-                          <button
-                            onClick={() => onMarkDone(task.id, task.project_id)}
-                            className="p-1 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 border border-emerald-200 transition-colors"
-                            title="Marcar como Concluído"
-                          >
-                            <CheckCircle2 size={10} />
-                          </button>
-                        )}
-                        {task.status === 'done' && (
-                          <button
-                            onClick={() => onMarkTask(task.id, task.project_id, 'todo')}
-                            className="p-1 rounded-lg bg-warm-200 text-warm-600 hover:bg-warm-300 border border-warm-300 transition-colors"
-                            title="Reabrir tarefa"
-                          >
-                            <Clock size={10} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                            {/* Coluna Projeto (Filho) */}
+                            <td className="py-2.5 px-4 text-warm-400 font-medium text-xs pl-8 max-w-[120px] truncate" title={child.project?.title || ''}>
+                              {child.project?.title || '—'}
+                            </td>
+
+                            {/* Coluna Tarefa (Filho) */}
+                            <td className="py-2.5 px-4 pl-12">
+                              <div className="flex items-center gap-2">
+                                <PriorityDot priority={child.priority} />
+                                <span className="font-medium text-warm-700 leading-tight text-xs">{child.title}</span>
+                              </div>
+                            </td>
+
+                            {/* Coluna Data (Filho) */}
+                            <td className="py-2.5 px-4">
+                              {editingTaskId === child.id ? (
+                                <div className="flex items-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="datetime-local"
+                                    value={tempDate}
+                                    onChange={(e) => setTempDate(e.target.value)}
+                                    className="bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs text-warm-800 outline-none focus:border-brand-500 transition-all font-sans font-semibold"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      onUpdateTaskDate(child.id, child.project_id, tempDate);
+                                      setEditingTaskId(null);
+                                    }}
+                                    className="p-1.5 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                                    title="Confirmar"
+                                  >
+                                    <Check size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTaskId(null)}
+                                    className="p-1.5 bg-warm-200 hover:bg-warm-300 text-warm-600 border border-warm-300 rounded-lg transition-colors"
+                                    title="Cancelar"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingTaskId(child.id);
+                                    setTempDate(child.due_date ? toDatetimeLocalString(child.due_date) : '');
+                                  }}
+                                  className="inline-flex items-center gap-1.5 hover:bg-warm-200/60 px-2 py-1 rounded-lg border border-transparent hover:border-warm-300/40 text-left transition-all group/date"
+                                  title="Clique para alterar a data e hora"
+                                >
+                                  <DueDateChip dateStr={child.due_date} status={child.status} literal={true} />
+                                  <Calendar size={11} className="text-warm-400 opacity-0 group-hover/date:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                            </td>
+
+                            {/* Coluna Status (Filho) */}
+                            <td className="py-2.5 px-4">
+                              <StatusPill status={child.status} />
+                            </td>
+
+                            {/* Coluna Ações (Filho) */}
+                            <td className="py-2.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {child.status !== 'doing' && child.status !== 'done' && (
+                                  <button
+                                    onClick={() => onMarkDoing(child.id, child.project_id)}
+                                    className="p-1 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                    title="Marcar como Fazendo"
+                                  >
+                                    <Play size={10} />
+                                  </button>
+                                )}
+                                {child.status === 'doing' && (
+                                  <button
+                                    onClick={() => onMarkTask(child.id, child.project_id, 'waiting')}
+                                    className="p-1 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 transition-colors"
+                                    title="Colocar em Aguardando"
+                                  >
+                                    <Clock size={10} />
+                                  </button>
+                                )}
+                                {child.status !== 'done' && (
+                                  <button
+                                    onClick={() => onMarkDone(child.id, child.project_id)}
+                                    className="p-1 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                    title="Marcar como Concluído"
+                                  >
+                                    <CheckCircle2 size={10} />
+                                  </button>
+                                )}
+                                {child.status === 'done' && (
+                                  <button
+                                    onClick={() => onMarkTask(child.id, child.project_id, 'todo')}
+                                    className="p-1 rounded-lg bg-warm-200 text-warm-600 hover:bg-warm-300 border border-warm-300 transition-colors"
+                                    title="Reabrir tarefa"
+                                  >
+                                    <Clock size={10} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </React.Fragment>
                 );
               })
             )}
@@ -844,7 +1086,7 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
 
       {/* Footer com Metadados */}
       <div className="px-5 py-2.5 bg-warm-100/50 border-t border-warm-200 flex justify-between items-center text-[10px] font-bold text-warm-400 uppercase tracking-wider">
-        <span>Total: {sortedTasks.length} {sortedTasks.length === 1 ? 'tarefa' : 'tarefas'}</span>
+        <span>Total: {totalVisibleCount} {totalVisibleCount === 1 ? 'tarefa' : 'tarefas'}</span>
       </div>
     </div>
   );
@@ -858,13 +1100,21 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
     [projects]
   );
   
-  // Achata todas as tarefas top-level dos projetos ativos
+  // Achata todas as tarefas top-level dos projetos ativos, filtrando as de OS não aprovadas
   const allTasks = useMemo(
     () =>
-      activeProjects.flatMap(p =>
-        (p.tasks || [])
-          .map(t => ({ ...t, project: p }))
-      ),
+      activeProjects.flatMap(p => {
+        const serviceOrders = p.service_orders || [];
+        return (p.tasks || [])
+          .filter(t => {
+            if (t.service_order_id) {
+              const os = serviceOrders.find(o => o.id === t.service_order_id);
+              return os ? os.status === 'approved' : false;
+            }
+            return true;
+          })
+          .map(t => ({ ...t, project: p }));
+      }),
     [activeProjects]
   );
 
@@ -987,6 +1237,7 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
             tasks={topTasks}
             onMarkDoing={handleMarkDoing}
             onMarkDone={handleMarkDone}
+            onMarkTask={markTask}
           />
         </div>
         <div className="lg:col-span-3">
@@ -994,6 +1245,7 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
             tasks={localTasks}
             onMarkDoing={handleMarkDoing}
             onMarkDone={handleMarkDone}
+            onMarkTask={markTask}
           />
         </div>
       </div>

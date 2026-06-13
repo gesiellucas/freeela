@@ -34,7 +34,7 @@ export type WorkflowStep =
 
 export type TaskStatus = 'todo' | 'doing' | 'waiting' | 'done'
 
-export type ServiceOrderStatus = 'draft' | 'pending' | 'approved' | 'declined'
+export type ServiceOrderStatus = 'draft' | 'pending' | 'approved' | 'declined' | 'proposal'
 
 export type TaskType =
   | 'technical'
