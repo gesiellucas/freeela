@@ -453,17 +453,27 @@ export default function App() {
     if (selectedProject?.id === projectId) setSelectedProject(null);
   };
 
-  // --- Task status handler (usado pelo Overview) ---
-
-  const handleUpdateTaskStatus = (taskId, projectId, newStatus) => {
+  const handleUpdateTaskStatus = (taskId, projectId, newStatus, extraUpdates = {}) => {
     setProjects(prev =>
       prev.map(p =>
         p.id === projectId
-          ? { ...p, tasks: (p.tasks || []).map(t => t.id === taskId ? { ...t, status: newStatus } : t) }
+          ? {
+              ...p,
+              tasks: (p.tasks || []).map(t =>
+                t.id === taskId
+                  ? {
+                      ...t,
+                      status: newStatus !== undefined && newStatus !== null ? newStatus : t.status,
+                      ...extraUpdates
+                    }
+                  : t
+              )
+            }
           : p
       )
     );
   };
+
 
   // --- Checklist handlers ---
 

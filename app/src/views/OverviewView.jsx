@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CheckCircle2,
   CheckSquare,
+  ChevronDown,
   Clock,
   Code2,
   Flame,
@@ -11,10 +12,14 @@ import {
   Hash,
   List,
   Play,
+  Search,
   Timer,
   Zap,
+  Check,
+  X,
+  Calendar,
 } from 'lucide-react';
-import { updateTaskStatus } from '../lib/supabase';
+import { updateTaskStatus, supabase } from '../lib/supabase';
 
 // ─── Constante de data do dia (módulo-level, atualizado ao recarregar a página) ──
 
@@ -64,11 +69,24 @@ function isThisWeek(dateStr){ const d = dayDiff(dateStr); return d !== null && d
 function formatDateLabel(dateStr) {
   const diff = dayDiff(dateStr);
   if (diff === null) return null;
+  const d = new Date(dateStr);
+  const pad = (num) => String(num).padStart(2, '0');
+  const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   if (diff < 0)  return `${Math.abs(diff)}d atraso`;
-  if (diff === 0) return 'Hoje';
-  if (diff === 1) return 'Amanhã';
-  if (diff <= 7)  return `em ${diff}d`;
-  return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  if (diff === 0) return `Hoje às ${timeStr}`;
+  if (diff === 1) return `Amanhã às ${timeStr}`;
+  if (diff <= 7)  return `em ${diff}d às ${timeStr}`;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ` às ${timeStr}`;
+}
+
+function formatDateLiteral(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const pad = (num) => String(num).padStart(2, '0');
+  const datePart = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${datePart} ${timePart}`;
 }
 
 function getGreeting() {
@@ -76,6 +94,14 @@ function getGreeting() {
   if (h < 12) return 'Bom dia';
   if (h < 18) return 'Boa tarde';
   return 'Boa noite';
+}
+
+function toDatetimeLocalString(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function scoreTask(task) {
@@ -138,9 +164,9 @@ const StatusPill = ({ status }) => {
   );
 };
 
-const DueDateChip = ({ dateStr, status }) => {
+const DueDateChip = ({ dateStr, status, literal = false }) => {
   if (!dateStr) return <span className="text-warm-300 text-xs">—</span>;
-  const label = formatDateLabel(dateStr);
+  const label = literal ? formatDateLiteral(dateStr) : formatDateLabel(dateStr);
   const over = isOverdue(dateStr) && status !== 'done';
   const tod  = isToday(dateStr)   && status !== 'done';
   return (
@@ -212,9 +238,6 @@ const FocusDoDia = ({ tasks, onMarkDoing, onMarkDone }) => (
               <p className="text-sm font-semibold text-warm-900 leading-snug">{task.title}</p>
               <div className="flex items-center gap-2 flex-wrap mt-1.5">
                 <span className="text-[10px] text-warm-400 font-medium truncate max-w-[100px]">{task.project?.title}</span>
-                {task.development_stack && (
-                  <span className="text-[10px] font-mono bg-warm-100 text-warm-500 px-1.5 py-0.5 rounded">{task.development_stack}</span>
-                )}
                 {task.due_date && <DueDateChip dateStr={task.due_date} status={task.status} />}
                 {task.estimated_hours && (
                   <span className="text-[10px] text-warm-400 flex items-center gap-0.5">
@@ -256,6 +279,7 @@ const FocusDoDia = ({ tasks, onMarkDoing, onMarkDone }) => (
 
 const FILTERS = [
   { id: 'all',     label: 'Todas' },
+  { id: 'todo',    label: 'A fazer' },
   { id: 'today',   label: 'Hoje' },
   { id: 'overdue', label: 'Atrasadas' },
   { id: 'doing',   label: 'Fazendo' },
@@ -265,6 +289,7 @@ const FILTERS = [
 function applyFilter(tasks, filterId) {
   const base = tasks.filter(t => t.status !== 'done');
   switch (filterId) {
+    case 'todo':    return base.filter(t => t.status === 'todo');
     case 'today':   return base.filter(t => isToday(t.due_date));
     case 'overdue': return base.filter(t => isOverdue(t.due_date));
     case 'doing':   return base.filter(t => t.status === 'doing');
@@ -378,9 +403,6 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone }) => {
                   <p className="text-sm font-medium text-warm-900 truncate">{task.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] text-warm-400 truncate max-w-[120px]">{task.project?.title}</span>
-                    {task.development_stack && (
-                      <span className="text-[10px] font-mono bg-warm-100 text-warm-500 px-1 rounded">{task.development_stack}</span>
-                    )}
                   </div>
                 </div>
 
@@ -475,9 +497,6 @@ const DayAgenda = ({ tasks }) => {
                     <p className="text-xs font-semibold truncate">{block.task.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[10px] opacity-60 truncate max-w-[120px]">{block.task.project?.title}</span>
-                      {block.task.development_stack && (
-                        <span className="text-[10px] font-mono opacity-70">{block.task.development_stack}</span>
-                      )}
                       {block.task.status === 'doing' && (
                         <span className="text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">em andamento</span>
                       )}
@@ -526,6 +545,311 @@ const DayAgenda = ({ tasks }) => {
   );
 };
 
+// ─── Tabela de Todas as Tarefas ───────────────────────────────────────────────
+
+const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, onUpdateTaskDate }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState('all');
+  const [sortField, setSortField] = useState('due_date');
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [tempDate, setTempDate] = useState('');
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+      const matchesProject = projectFilter === 'all' || task.project?.id === projectFilter;
+      return matchesSearch && matchesStatus && matchesProject;
+    });
+  }, [tasks, searchTerm, statusFilter, projectFilter]);
+
+  const sortedTasks = useMemo(() => {
+    return [...filteredTasks].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+
+      if (sortField === 'title') {
+        aVal = a.title.toLowerCase();
+        bVal = b.title.toLowerCase();
+      } else if (sortField === 'project') {
+        aVal = (a.project?.title || '').toLowerCase();
+        bVal = (b.project?.title || '').toLowerCase();
+      } else if (sortField === 'due_date') {
+        aVal = a.due_date ? new Date(a.due_date).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+        bVal = b.due_date ? new Date(b.due_date).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+      } else if (sortField === 'status') {
+        aVal = a.status;
+        bVal = b.status;
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredTasks, sortField, sortDirection]);
+
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const statuses = [
+    { id: 'all', label: 'Todas' },
+    { id: 'todo', label: 'A fazer' },
+    { id: 'doing', label: 'Fazendo' },
+    { id: 'waiting', label: 'Aguardando' },
+    { id: 'done', label: 'Concluído' },
+  ];
+
+  return (
+    <div className="bg-warm-50 border border-warm-300/60 rounded-2xl shadow-card overflow-hidden">
+      {/* Header e Controles */}
+      <div className="px-5 py-4 border-b border-warm-200 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <List size={14} className="text-brand-500" />
+            <h2 className="text-xs font-bold text-warm-900 uppercase tracking-wider">Organize as tarefas</h2>
+          </div>
+          
+          {/* Busca */}
+          <div className="relative max-w-xs w-full">
+            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-400" />
+            <input
+              type="text"
+              placeholder="Buscar tarefa..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-8 py-1.5 bg-warm-200 border border-warm-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 rounded-xl text-xs text-warm-900 placeholder-warm-500 outline-none transition-all"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-warm-400 hover:text-warm-700 font-bold"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filtros de Status e Projeto */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
+          {/* Status Quick Filters */}
+          <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            {statuses.map(s => {
+              const count = s.id === 'all' 
+                ? tasks.length 
+                : tasks.filter(t => t.status === s.id).length;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setStatusFilter(s.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    statusFilter === s.id
+                      ? 'bg-warm-900 text-warm-50'
+                      : 'text-warm-500 hover:bg-warm-200 hover:text-warm-700'
+                  }`}
+                >
+                  {s.label}
+                  {count > 0 && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                      statusFilter === s.id
+                        ? 'bg-warm-700 text-warm-200'
+                        : 'bg-warm-200 text-warm-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filtro por Projeto */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-warm-400">Projeto:</span>
+            <div className="relative">
+              <select
+                value={projectFilter}
+                onChange={(e) => setProjectFilter(e.target.value)}
+                className="appearance-none bg-warm-200 border border-warm-300 focus:border-brand-500 rounded-xl px-3 py-1 pr-8 text-xs text-warm-900 font-semibold outline-none transition-all cursor-pointer"
+              >
+                <option value="all">Todos</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-warm-500 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabela de Tarefas */}
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-warm-300 scrollbar-track-transparent">
+        <table className="w-full border-collapse text-left min-w-[600px]">
+          <thead>
+            <tr className="bg-warm-100 border-b border-warm-200 text-[10px] font-bold text-warm-500 uppercase tracking-wider select-none">
+              <th className="py-2.5 px-4 cursor-pointer hover:bg-warm-200/50 transition-colors" onClick={() => toggleSort('project')}>
+                <div className="flex items-center gap-1">
+                  Projeto
+                  {sortField === 'project' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
+                </div>
+              </th>
+              <th className="py-2.5 px-4 cursor-pointer hover:bg-warm-200/50 transition-colors" onClick={() => toggleSort('title')}>
+                <div className="flex items-center gap-1">
+                  Tarefa
+                  {sortField === 'title' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
+                </div>
+              </th>
+              <th className="py-2.5 px-4 cursor-pointer hover:bg-warm-200/50 transition-colors w-40" onClick={() => toggleSort('due_date')}>
+                <div className="flex items-center gap-1">
+                  Data
+                  {sortField === 'due_date' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
+                </div>
+              </th>
+              <th className="py-2.5 px-4 cursor-pointer hover:bg-warm-200/50 transition-colors w-32" onClick={() => toggleSort('status')}>
+                <div className="flex items-center gap-1">
+                  Status
+                  {sortField === 'status' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
+                </div>
+              </th>
+              <th className="py-2.5 px-4 text-right w-24">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-warm-100 text-sm">
+            {sortedTasks.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="text-center py-12">
+                  <CheckSquare size={24} className="mx-auto text-warm-300 mb-2 opacity-50" />
+                  <p className="text-sm font-semibold text-warm-700">Nenhuma tarefa encontrada</p>
+                  <p className="text-xs text-warm-400 mt-1">Refine a sua busca ou filtros.</p>
+                </td>
+              </tr>
+            ) : (
+              sortedTasks.map(task => {
+                const over = isOverdue(task.due_date) && task.status !== 'done';
+                return (
+                  <tr 
+                    key={task.id} 
+                    className={`hover:bg-warm-100/30 transition-colors group ${over ? 'bg-red-50/10' : ''}`}
+                  >
+                    {/* Coluna Projeto */}
+                    <td className="py-3 px-4 text-warm-600 font-medium">
+                      {task.project?.title || '—'}
+                    </td>
+
+                    {/* Coluna Tarefa */}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <PriorityDot priority={task.priority} />
+                        <span className="font-semibold text-warm-900 leading-tight">{task.title}</span>
+                      </div>
+                    </td>
+
+                    {/* Coluna Data */}
+                    <td className="py-3 px-4">
+                      {editingTaskId === task.id ? (
+                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="datetime-local"
+                            value={tempDate}
+                            onChange={(e) => setTempDate(e.target.value)}
+                            className="bg-warm-50 border border-warm-300 rounded-lg px-2 py-1 text-xs text-warm-800 outline-none focus:border-brand-500 transition-all font-sans font-semibold"
+                          />
+                          <button
+                            onClick={() => {
+                              onUpdateTaskDate(task.id, task.project_id, tempDate);
+                              setEditingTaskId(null);
+                            }}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                            title="Confirmar"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            onClick={() => setEditingTaskId(null)}
+                            className="p-1.5 bg-warm-200 hover:bg-warm-300 text-warm-600 border border-warm-300 rounded-lg transition-colors"
+                            title="Cancelar"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTaskId(task.id);
+                            setTempDate(task.due_date ? toDatetimeLocalString(task.due_date) : '');
+                          }}
+                          className="inline-flex items-center gap-1.5 hover:bg-warm-200/60 px-2 py-1 rounded-lg border border-transparent hover:border-warm-300/40 text-left transition-all group/date"
+                          title="Clique para alterar a data e hora"
+                        >
+                          <DueDateChip dateStr={task.due_date} status={task.status} literal={true} />
+                          <Calendar size={11} className="text-warm-400 opacity-0 group-hover/date:opacity-100 transition-opacity" />
+                        </button>
+                      )}
+                    </td>
+
+                    {/* Coluna Status */}
+                    <td className="py-3 px-4">
+                      <StatusPill status={task.status} />
+                    </td>
+
+                    {/* Coluna Ações */}
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {task.status !== 'doing' && task.status !== 'done' && (
+                          <button
+                            onClick={() => onMarkDoing(task.id, task.project_id)}
+                            className="p-1 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 border border-blue-200 transition-colors"
+                            title="Marcar como Fazendo"
+                          >
+                            <Play size={10} />
+                          </button>
+                        )}
+                        {task.status !== 'done' && (
+                          <button
+                            onClick={() => onMarkDone(task.id, task.project_id)}
+                            className="p-1 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                            title="Marcar como Concluído"
+                          >
+                            <CheckCircle2 size={10} />
+                          </button>
+                        )}
+                        {task.status === 'done' && (
+                          <button
+                            onClick={() => onMarkTask(task.id, task.project_id, 'todo')}
+                            className="p-1 rounded-lg bg-warm-200 text-warm-600 hover:bg-warm-300 border border-warm-300 transition-colors"
+                            title="Reabrir tarefa"
+                          >
+                            <Clock size={10} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer com Metadados */}
+      <div className="px-5 py-2.5 bg-warm-100/50 border-t border-warm-200 flex justify-between items-center text-[10px] font-bold text-warm-400 uppercase tracking-wider">
+        <span>Total: {sortedTasks.length} {sortedTasks.length === 1 ? 'tarefa' : 'tarefas'}</span>
+      </div>
+    </div>
+  );
+};
+
 // ─── View principal ───────────────────────────────────────────────────────────
 
 export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
@@ -533,13 +857,12 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
     () => projects.filter(p => p.status === 'active' || p.is_active),
     [projects]
   );
-
+  
   // Achata todas as tarefas top-level dos projetos ativos
   const allTasks = useMemo(
     () =>
       activeProjects.flatMap(p =>
         (p.tasks || [])
-          .filter(t => !t.parent_task_id)
           .map(t => ({ ...t, project: p }))
       ),
     [activeProjects]
@@ -590,6 +913,18 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
       if (newStatus === 'done') {
         setCompletedInSession(prev => { const s = new Set(prev); s.delete(taskId); return s; });
       }
+    }
+  };
+
+  const handleUpdateTaskDate = async (taskId, projectId, newDateStr) => {
+    const newDate = newDateStr ? new Date(newDateStr).toISOString() : null;
+    setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDate } : t));
+    try {
+      const { error } = await supabase.from('tasks').update({ due_date: newDate }).eq('id', taskId);
+      if (error) throw error;
+      onUpdateTaskStatus?.(taskId, projectId, undefined, { due_date: newDate });
+    } catch (err) {
+      console.error('Erro ao atualizar data da tarefa:', err);
     }
   };
 
@@ -665,6 +1000,16 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
 
       {/* ── Agenda do Dia ── */}
       <DayAgenda tasks={localTasks} />
+
+      {/* ── Tabela de Todas as Tarefas ── */}
+      <TaskTableBlock 
+        tasks={localTasks} 
+        projects={activeProjects}
+        onMarkDoing={handleMarkDoing}
+        onMarkDone={handleMarkDone}
+        onMarkTask={markTask}
+        onUpdateTaskDate={handleUpdateTaskDate}
+      />
     </div>
   );
 }
