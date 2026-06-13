@@ -1109,7 +1109,9 @@ export default function App() {
                 <OverviewView
                   projects={projects}
                   userId={userId}
+                  authUser={user}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onRefresh={loadAllData}
                 />
               )}
               {activeTab === 'painel' && (

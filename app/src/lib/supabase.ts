@@ -872,6 +872,7 @@ export async function createMediaFile(userId: string, fileData: {
   proposal_id?: string
   contract_id?: string
   project_id?: string
+  task_id?: string
   sort_order?: number
 }) {
   return supabase
@@ -883,6 +884,14 @@ export async function createMediaFile(userId: string, fileData: {
 
 export async function deleteMediaFile(fileId: string) {
   return supabase.from('media_files').delete().eq('id', fileId)
+}
+
+export async function getTaskMediaFiles(taskId: string) {
+  return supabase
+    .from('media_files')
+    .select('*')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false })
 }
 
 // ============================================

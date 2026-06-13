@@ -19,8 +19,13 @@ import {
   Check,
   X,
   Calendar,
+  Plus,
+  Trash2,
+  Paperclip,
+  ZoomIn,
 } from 'lucide-react';
-import { updateTaskStatus, supabase } from '../lib/supabase';
+import { updateTaskStatus, supabase, getTaskMediaFiles } from '../lib/supabase';
+import FileUploader from '../components/ui/FileUploader';
 
 // ─── Constante de data do dia (módulo-level, atualizado ao recarregar a página) ──
 
@@ -308,7 +313,7 @@ function applyFilter(tasks, filterId) {
   }
 }
 
-const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask }) => {
+const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask, onTaskClick }) => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [stackFilter, setStackFilter]   = useState('');
 
@@ -405,7 +410,8 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask }) => {
             return (
               <div
                 key={task.id}
-                className={`flex items-center gap-3 px-4 py-3 border-b border-warm-100 last:border-0 hover:bg-warm-100/40 group transition-colors ${over ? 'bg-red-50/20' : ''}`}
+                onClick={() => onTaskClick?.(task)}
+                className={`flex items-center gap-3 px-4 py-3 border-b border-warm-100 last:border-0 hover:bg-warm-100/40 group transition-colors cursor-pointer ${over ? 'bg-red-50/20' : ''}`}
               >
                 <PriorityDot priority={task.priority} />
 
@@ -427,7 +433,7 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask }) => {
                 </div>
 
                 {/* Ações inline (aparece no hover) */}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                   {task.status !== 'doing' && task.status !== 'done' && (
                     <button
                       onClick={() => onMarkDoing(task.id, task.project_id)}
@@ -566,7 +572,7 @@ const DayAgenda = ({ tasks }) => {
 
 // ─── Tabela de Todas as Tarefas ───────────────────────────────────────────────
 
-const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, onUpdateTaskDate }) => {
+const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, onUpdateTaskDate, onTaskClick }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
@@ -831,7 +837,8 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                   <React.Fragment key={parent.id}>
                     {/* Linha do Pai */}
                     <tr 
-                      className={`hover:bg-warm-100/30 transition-colors group ${parentOver ? 'bg-red-50/10' : ''}`}
+                      onClick={() => onTaskClick?.(parent)}
+                      className={`hover:bg-warm-100/30 transition-colors group cursor-pointer ${parentOver ? 'bg-red-50/10' : ''}`}
                     >
                       {/* Coluna Projeto */}
                       <td className="py-3 px-4 text-warm-600 font-medium max-w-[120px] truncate" title={parent.project?.title || ''}>
@@ -918,7 +925,7 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                       </td>
 
                       {/* Coluna Ações */}
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {parent.status !== 'doing' && parent.status !== 'done' && (
                             <button
@@ -967,7 +974,8 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                         return (
                           <tr 
                             key={child.id}
-                            className={`hover:bg-warm-100/20 bg-warm-100/10 transition-colors group ${childOver ? 'bg-red-50/5' : ''}`}
+                            onClick={() => onTaskClick?.(child)}
+                            className={`hover:bg-warm-100/20 bg-warm-100/10 transition-colors group cursor-pointer ${childOver ? 'bg-red-50/5' : ''}`}
                           >
                             {/* Coluna Projeto (Filho) */}
                             <td className="py-2.5 px-4 text-warm-400 font-medium text-xs pl-8 max-w-[120px] truncate" title={child.project?.title || ''}>
@@ -1032,7 +1040,7 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                             </td>
 
                             {/* Coluna Ações (Filho) */}
-                            <td className="py-2.5 px-4 text-right">
+                             <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {child.status !== 'doing' && child.status !== 'done' && (
                                   <button
@@ -1092,9 +1100,35 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
   );
 };
 
+// ─── Componente Modal Reutilizável localmente ─────────────────────────────────
+
+const LocalModal = ({ isOpen, onClose, title, children, footer }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-warm-50 rounded-2xl border border-warm-300/60 shadow-elevated w-full max-w-2xl overflow-hidden animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-warm-250 flex justify-between items-center flex-shrink-0">
+          <h3 className="font-semibold text-warm-900 tracking-tight text-xs uppercase tracking-wider">{title}</h3>
+          <button onClick={onClose} className="text-warm-500 hover:text-warm-850 p-1.5 rounded-lg hover:bg-warm-200 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1">
+          {children}
+        </div>
+        {footer && (
+          <div className="px-6 py-4 border-t border-warm-250 flex justify-end gap-3 bg-warm-100/50 flex-shrink-0">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── View principal ───────────────────────────────────────────────────────────
 
-export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
+export default function OverviewView({ projects, userId, authUser, onUpdateTaskStatus, onRefresh }) {
   const activeProjects = useMemo(
     () => projects.filter(p => p.status === 'active' || p.is_active),
     [projects]
@@ -1121,6 +1155,64 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
   // Estado local para atualização otimista de status
   const [localTasks, setLocalTasks] = useState(allTasks);
   const [completedInSession, setCompletedInSession] = useState(new Set());
+
+  // --- Task Details Modal State ---
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [taskFiles, setTaskFiles] = useState([]);
+  const [activeLightboxImage, setActiveLightboxImage] = useState(null);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [subtasks, setSubtasks] = useState([]);
+  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalDesc, setModalDesc] = useState('');
+  const [modalStatus, setModalStatus] = useState('todo');
+  const [modalPriority, setModalPriority] = useState(0);
+  const [modalHours, setModalHours] = useState('');
+  const [modalDueDate, setModalDueDate] = useState('');
+  const [savingTaskDetails, setSavingTaskDetails] = useState(false);
+
+  const [newSubTitle, setNewSubTitle] = useState('');
+  const [addingSubtask, setAddingSubtask] = useState(false);
+
+  useEffect(() => {
+    if (!selectedTask) {
+      setTaskFiles([]);
+      setSubtasks([]);
+      return;
+    }
+
+    const loadTaskData = async () => {
+      setLoadingFiles(true);
+      setLoadingSubtasks(true);
+      try {
+        const [filesRes, subtasksRes] = await Promise.all([
+          getTaskMediaFiles(selectedTask.id),
+          supabase.from('tasks').select('*').eq('parent_task_id', selectedTask.id).order('created_at', { ascending: true })
+        ]);
+        if (filesRes.data) setTaskFiles(filesRes.data);
+        if (subtasksRes.data) setSubtasks(subtasksRes.data);
+      } catch (err) {
+        console.error('Erro ao carregar dados da tarefa:', err);
+      } finally {
+        setLoadingFiles(false);
+        setLoadingSubtasks(false);
+      }
+    };
+
+    loadTaskData();
+  }, [selectedTask]);
+
+  useEffect(() => {
+    if (selectedTask) {
+      setModalTitle(selectedTask.title || '');
+      setModalDesc(selectedTask.description || '');
+      setModalStatus(selectedTask.status || 'todo');
+      setModalPriority(selectedTask.priority ?? 0);
+      setModalHours(selectedTask.estimated_hours || '');
+      setModalDueDate(selectedTask.due_date ? toDatetimeLocalString(selectedTask.due_date) : '');
+    }
+  }, [selectedTask]);
 
   // Sincroniza quando o pai atualiza os projetos
   useEffect(() => { setLocalTasks(allTasks); }, [allTasks]);
@@ -1180,6 +1272,137 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
 
   const handleMarkDoing = (taskId, projectId) => markTask(taskId, projectId, 'doing');
   const handleMarkDone  = (taskId, projectId) => markTask(taskId, projectId, 'done');
+
+  const handleSaveTaskDetails = async () => {
+    if (!modalTitle.trim()) return;
+    setSavingTaskDetails(true);
+    try {
+      const updates = {
+        title: modalTitle.trim(),
+        description: modalDesc.trim() || null,
+        status: modalStatus,
+        priority: parseInt(modalPriority),
+        estimated_hours: modalHours ? parseFloat(modalHours) : null,
+        due_date: modalDueDate ? new Date(modalDueDate).toISOString() : null,
+      };
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', selectedTask.id);
+
+      if (error) throw error;
+
+      // Update localTasks so that parent and sub-components in Overview re-render instantly
+      setLocalTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, ...updates } : t));
+      
+      // Update parent projects state
+      onUpdateTaskStatus?.(selectedTask.id, selectedTask.project_id, updates.status, updates);
+
+      // Trigger refresh
+      onRefresh?.();
+      
+      setSelectedTask(null);
+    } catch (err) {
+      console.error('Erro ao salvar tarefa:', err);
+      alert('Erro ao salvar alterações');
+    } finally {
+      setSavingTaskDetails(false);
+    }
+  };
+
+  const handleAddSubtask = async (e) => {
+    e.preventDefault();
+    if (!newSubTitle.trim()) return;
+    setAddingSubtask(true);
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          project_id: selectedTask.project_id,
+          user_id: userId,
+          parent_task_id: selectedTask.id,
+          title: newSubTitle.trim(),
+          status: 'todo',
+          priority: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setSubtasks(prev => [...prev, data]);
+        setNewSubTitle('');
+        onRefresh?.(); // Refresh to update overview EAP hierarchy
+      }
+    } catch (err) {
+      console.error('Erro ao adicionar subtarefa:', err);
+    } finally {
+      setAddingSubtask(false);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId) => {
+    if (!window.confirm('Excluir esta subtarefa?')) return;
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+      setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
+      onRefresh?.();
+    } catch (err) {
+      console.error('Erro ao deletar subtarefa:', err);
+    }
+  };
+
+  const handleToggleSubtaskStatus = async (subtask) => {
+    const newStatus = subtask.status === 'done' ? 'todo' : 'done';
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', subtask.id);
+
+      if (error) throw error;
+      setSubtasks(prev => prev.map(s => s.id === subtask.id ? { ...s, status: newStatus } : s));
+      onRefresh?.();
+    } catch (err) {
+      console.error('Erro ao atualizar status da subtarefa:', err);
+    }
+  };
+
+  const handleDeleteParentTask = async () => {
+    if (!window.confirm('Excluir esta tarefa permanentemente?')) return;
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', selectedTask.id);
+
+      if (error) throw error;
+      
+      setLocalTasks(prev => prev.filter(t => t.id !== selectedTask.id));
+      onRefresh?.();
+      setSelectedTask(null);
+    } catch (err) {
+      console.error('Erro ao excluir tarefa:', err);
+      alert('Erro ao excluir tarefa');
+    }
+  };
+
+  const handleFileAdded = (newFile) => {
+    setTaskFiles(prev => [newFile, ...prev]);
+    onRefresh?.();
+  };
+
+  const handleFileDeleted = (deletedFileId) => {
+    setTaskFiles(prev => prev.filter(f => f.id !== deletedFileId));
+    onRefresh?.();
+  };
 
   const greeting = getGreeting();
   const dateLabel = new Date().toLocaleDateString('pt-BR', {
@@ -1246,6 +1469,7 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
             onMarkDoing={handleMarkDoing}
             onMarkDone={handleMarkDone}
             onMarkTask={markTask}
+            onTaskClick={setSelectedTask}
           />
         </div>
       </div>
@@ -1261,7 +1485,308 @@ export default function OverviewView({ projects, userId, onUpdateTaskStatus }) {
         onMarkDone={handleMarkDone}
         onMarkTask={markTask}
         onUpdateTaskDate={handleUpdateTaskDate}
+        onTaskClick={setSelectedTask}
       />
+
+      {/* ── Modal de Detalhes da Tarefa ── */}
+      {selectedTask && (
+        <LocalModal
+          isOpen={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          title="Detalhes da Tarefa"
+          footer={(
+            <div className="flex justify-between items-center w-full">
+              <button
+                type="button"
+                onClick={handleDeleteParentTask}
+                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 size={13} />
+                Excluir Tarefa
+              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTask(null)}
+                  className="px-4 py-2 border border-warm-400 text-warm-600 hover:bg-warm-250 rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTaskDetails}
+                  disabled={savingTaskDetails || !modalTitle.trim()}
+                  className="px-4 py-2 bg-brand-500 hover:bg-brand-400 text-warm-900 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {savingTaskDetails ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </div>
+          )}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Coluna da esquerda (Conteúdo) */}
+            <div className="lg:col-span-3 space-y-6">
+              {/* Título */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-warm-400 block mb-1.5">Título da Tarefa</label>
+                <input
+                  type="text"
+                  value={modalTitle}
+                  onChange={(e) => setModalTitle(e.target.value)}
+                  className="w-full bg-warm-200 border border-warm-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 rounded-xl px-4 py-2.5 text-xs text-warm-900 placeholder-warm-500 outline-none transition-all font-semibold"
+                  placeholder="Título da tarefa..."
+                  required
+                />
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-warm-400 block mb-1.5">Descrição</label>
+                <textarea
+                  value={modalDesc}
+                  onChange={(e) => setModalDesc(e.target.value)}
+                  className="w-full bg-warm-200 border border-warm-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 rounded-xl px-4 py-2.5 text-xs text-warm-900 placeholder-warm-500 outline-none transition-all h-24 resize-none"
+                  placeholder="Adicionar descrição detalhada..."
+                />
+              </div>
+
+              {/* Subtarefas */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <List size={14} className="text-brand-500" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-warm-400">Subtarefas ({subtasks.length})</span>
+                  </div>
+                </div>
+
+                {/* Lista de Subtarefas */}
+                {loadingSubtasks ? (
+                  <div className="py-4 text-center text-xs text-warm-400 font-medium">Carregando subtarefas...</div>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {subtasks.length === 0 ? (
+                      <p className="text-xs text-warm-400 italic">Nenhuma subtarefa criada.</p>
+                    ) : (
+                      subtasks.map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="flex items-center justify-between gap-3 p-2.5 bg-warm-200/50 hover:bg-warm-200 rounded-xl border border-warm-300/40 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSubtaskStatus(sub)}
+                              className="text-warm-500 hover:text-brand-500 flex-shrink-0 transition-colors"
+                            >
+                              {sub.status === 'done' ? (
+                                <CheckSquare size={14} className="text-emerald-500" />
+                              ) : (
+                                <span className="block w-3.5 h-3.5 border border-warm-400 rounded bg-warm-100 hover:border-warm-600 transition-colors" />
+                              )}
+                            </button>
+                            <span className={`text-xs font-medium truncate ${sub.status === 'done' ? 'line-through text-warm-400' : 'text-warm-800'}`}>
+                              {sub.title}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSubtask(sub.id)}
+                            className="p-1 text-warm-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remover subtarefa"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Formulário de adicionar subtarefa */}
+                <form onSubmit={handleAddSubtask} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nova subtarefa..."
+                    value={newSubTitle}
+                    onChange={(e) => setNewSubTitle(e.target.value)}
+                    className="flex-1 bg-warm-200 border border-warm-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 rounded-xl px-3 py-1.5 text-xs text-warm-900 outline-none transition-all"
+                  />
+                  <button
+                    type="submit"
+                    disabled={addingSubtask || !newSubTitle.trim()}
+                    className="px-3.5 py-1.5 bg-brand-500 hover:bg-brand-400 text-warm-900 rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
+                  >
+                    <Plus size={12} />
+                    Adicionar
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Coluna da direita (Sidebar) */}
+            <div className="lg:col-span-2 bg-warm-200/40 rounded-2xl border border-warm-300/40 p-5 space-y-6 flex flex-col justify-between">
+              <div className="space-y-5">
+                {/* Status */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-500 block mb-2">Status</label>
+                  <select
+                    value={modalStatus}
+                    onChange={(e) => setModalStatus(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-xl px-4 py-2.5 text-xs font-semibold text-warm-850 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+                  >
+                    <option value="todo">A fazer</option>
+                    <option value="doing">Fazendo</option>
+                    <option value="waiting">Aguardando</option>
+                    <option value="done">Concluído</option>
+                  </select>
+                </div>
+
+                {/* Prioridade */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-500 block mb-2">Prioridade</label>
+                  <select
+                    value={modalPriority}
+                    onChange={(e) => setModalPriority(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-xl px-4 py-2.5 text-xs font-semibold text-warm-850 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+                  >
+                    <option value={0}>Normal</option>
+                    <option value={1}>Alta</option>
+                    <option value={2}>Urgente</option>
+                  </select>
+                </div>
+
+                {/* Horas Estimadas */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-500 block mb-2">Horas Estimadas</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      placeholder="Horas..."
+                      value={modalHours}
+                      onChange={(e) => setModalHours(e.target.value)}
+                      className="w-full bg-warm-50 border border-warm-300 rounded-xl pl-4 pr-8 py-2.5 text-xs text-warm-900 outline-none transition-all font-semibold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-warm-400 font-bold uppercase">h</span>
+                  </div>
+                </div>
+
+                {/* Data de Vencimento */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-500 block mb-2">Prazo / Vencimento</label>
+                  <input
+                    type="datetime-local"
+                    value={modalDueDate}
+                    onChange={(e) => setModalDueDate(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-xl px-4 py-2.5 text-xs text-warm-900 outline-none transition-all font-semibold cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Informações de Contexto do Projeto */}
+              <div className="pt-4 border-t border-warm-300/60 text-[11px] text-warm-500 space-y-1">
+                <p>
+                  <strong>Projeto:</strong> <span className="text-warm-700 font-medium">{selectedTask?.project?.title || '—'}</span>
+                </p>
+                {selectedTask?.project?.client && (
+                  <p>
+                    <strong>Cliente:</strong> <span className="text-warm-700 font-medium">{selectedTask.project.client.name}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Anexos / File Uploader */}
+          <div className="mt-6 border-t border-warm-250 pt-5 space-y-4">
+            <div className="flex items-center gap-1.5">
+              <Paperclip size={14} className="text-brand-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-warm-400">Armazenamento / Anexos</span>
+            </div>
+
+            {/* Galeria de Imagens Anexadas */}
+            {!loadingFiles && taskFiles.filter(f => f.mime_type?.startsWith('image/')).length > 0 && (
+              <div className="space-y-2 bg-warm-200/20 rounded-xl p-3 border border-warm-300/40">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-warm-500">Galeria de Imagens</p>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+                  {taskFiles.filter(f => f.mime_type?.startsWith('image/')).map(file => (
+                    <div 
+                      key={file.id} 
+                      onClick={() => setActiveLightboxImage(file)}
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-warm-300 bg-warm-200/50 hover:border-brand-400 hover:shadow-sm cursor-pointer transition-all"
+                      title="Clique para ampliar"
+                    >
+                      <img 
+                        src={file.file_url} 
+                        alt={file.file_name} 
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ZoomIn className="text-white animate-in zoom-in-75 duration-200" size={14} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {loadingFiles ? (
+              <div className="py-6 text-center text-xs text-warm-400 font-medium">Carregando anexos...</div>
+            ) : (
+              <FileUploader
+                userId={userId}
+                authUserId={authUser?.id}
+                folder="tasks"
+                entityId={selectedTask.id}
+                existingFiles={taskFiles}
+                onFileAdded={handleFileAdded}
+                onFileDeleted={handleFileDeleted}
+                compact={true}
+              />
+            )}
+            
+            <p className="text-[10px] text-warm-500 flex items-center gap-1 mt-1">
+              <span className="font-bold">Dica:</span> Você pode colar uma imagem diretamente do seu clipboard (Ctrl+V) nesta seção.
+            </p>
+          </div>
+        </LocalModal>
+      )}
+
+      {/* ── Lightbox para Visualização de Imagens ── */}
+      {activeLightboxImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex flex-col items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setActiveLightboxImage(null)}
+        >
+          <button 
+            onClick={() => setActiveLightboxImage(null)}
+            className="absolute top-5 right-5 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all"
+          >
+            <X size={20} />
+          </button>
+          
+          <div className="max-w-4xl max-h-[80vh] relative flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={activeLightboxImage.file_url} 
+              alt={activeLightboxImage.file_name} 
+              className="object-contain max-w-full max-h-[80vh] rounded-xl shadow-2xl animate-in zoom-in-95" 
+            />
+          </div>
+          
+          <div className="mt-4 text-center text-white/90 max-w-lg px-4">
+            <p className="text-sm font-semibold truncate">{activeLightboxImage.file_name}</p>
+            {activeLightboxImage.file_size && (
+              <p className="text-xs text-white/50 mt-1">
+                {activeLightboxImage.file_size < 1024 ? `${activeLightboxImage.file_size} B` :
+                 activeLightboxImage.file_size < 1024 * 1024 ? `${(activeLightboxImage.file_size / 1024).toFixed(1)} KB` :
+                 `${(activeLightboxImage.file_size / (1024 * 1024)).toFixed(1)} MB`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

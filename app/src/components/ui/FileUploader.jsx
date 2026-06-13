@@ -1,19 +1,19 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  UploadCloud, FileText, Video, Music, Image, File,
+  UploadCloud, FileText, Video, Music, Image as ImageIcon, File as FileIcon,
   ExternalLink, Trash2, Loader2
 } from 'lucide-react';
 import { uploadFile, createMediaFile, deleteMediaFile, deleteStorageFile } from '../../lib/supabase';
 
 const FileTypeIcon = ({ mimeType }) => {
-  if (!mimeType) return <File size={18} className="text-warm-500 flex-shrink-0" />;
+  if (!mimeType) return <FileIcon size={18} className="text-warm-500 flex-shrink-0" />;
   if (mimeType.includes('pdf'))   return <FileText size={18} className="text-red-400 flex-shrink-0" />;
   if (mimeType.includes('video')) return <Video size={18} className="text-purple-400 flex-shrink-0" />;
   if (mimeType.includes('audio')) return <Music size={18} className="text-green-400 flex-shrink-0" />;
-  if (mimeType.includes('image')) return <Image size={18} className="text-blue-400 flex-shrink-0" />;
+  if (mimeType.includes('image')) return <ImageIcon size={18} className="text-blue-400 flex-shrink-0" />;
   if (mimeType.includes('word') || mimeType.includes('document')) return <FileText size={18} className="text-blue-600 flex-shrink-0" />;
   if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return <FileText size={18} className="text-orange-400 flex-shrink-0" />;
-  return <File size={18} className="text-warm-500 flex-shrink-0" />;
+  return <FileIcon size={18} className="text-warm-500 flex-shrink-0" />;
 };
 
 const formatFileSize = (bytes) => {
@@ -52,6 +52,40 @@ export default function FileUploader({
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
+  const handleUploadRef = React.useRef();
+  React.useEffect(() => {
+    handleUploadRef.current = handleUpload;
+  });
+
+  React.useEffect(() => {
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files = [];
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            const ext = file.type.split('/')[1] || 'png';
+            const pastedFile = new File([file], `colado-${Date.now()}.${ext}`, { type: file.type });
+            files.push(pastedFile);
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        handleUploadRef.current(files);
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, []);
+
   const handleUpload = async (files) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -73,6 +107,7 @@ export default function FileUploader({
           'contracts': 'contract_id',
           'projects': 'project_id',
           'fiscal-notes': null,
+          'tasks': 'task_id',
         };
         const fkCol = fkMap[folder];
 
