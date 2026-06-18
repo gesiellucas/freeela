@@ -397,12 +397,22 @@ export default function App() {
 
   const handleSelectProject = (project) => {
     if (project) {
+      setProjects(prev => {
+        const exists = prev.some(p => p.id === project.id);
+        if (exists) {
+          return prev.map(p => p.id === project.id ? { ...p, ...project } : p);
+        }
+        return [project, ...prev];
+      });
+      setSelectedProject(project);
+
       if (slug && slug.length >= 3 && slug[2] === 'tarefas') {
         router.push(`/projeto/${project.id}/tarefas`);
       } else {
         router.push(`/projeto/${project.id}`);
       }
     } else {
+      setSelectedProject(null);
       router.push('/projects');
     }
   };
@@ -872,7 +882,7 @@ export default function App() {
         .from('projects')
         .update(updates)
         .eq('id', projectId)
-        .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*)')
+        .select('*, client:clients(*), tasks(*), payments(*), checklists(*, checklist_items(*)), documents(*), workflow_history(*), proposals(*), contracts(*), media_files(*), fiscal_notes(*), service_orders(*)')
         .single();
 
       if (error) throw error;
