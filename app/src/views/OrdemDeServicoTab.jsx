@@ -55,11 +55,13 @@ const Badge = ({ color = 'slate', children }) => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const OS_STATUS_CONFIG = {
-  draft:    { label: 'Rascunho',  color: 'slate',  icon: FileText },
-  proposal: { label: 'Proposta',  color: 'violet', icon: FileText },
-  pending:  { label: 'Pendente',  color: 'yellow', icon: Clock },
-  approved: { label: 'Aprovada',  color: 'green',  icon: CheckCircle2 },
-  declined: { label: 'Declinada', color: 'red',    icon: AlertCircle },
+  draft:     { label: 'Rascunho',  color: 'slate',  icon: FileText },
+  proposal:  { label: 'Proposta',  color: 'violet', icon: FileText },
+  pending:   { label: 'Pendente',  color: 'yellow', icon: Clock },
+  approved:  { label: 'Aprovada',  color: 'green',  icon: CheckCircle2 },
+  declined:  { label: 'Declinada', color: 'red',    icon: AlertCircle },
+  cancelled: { label: 'Cancelada', color: 'red',    icon: X },
+  completed: { label: 'Concluída', color: 'green',  icon: CheckCircle2 },
 };
 
 const PRIORITY_CONFIG = {
@@ -71,7 +73,8 @@ const PRIORITY_CONFIG = {
 
 function fmtDate(d) {
   if (!d) return '—';
-  return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+  const dateStr = typeof d === 'string' ? d.substring(0, 10) : d;
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
 }
 
 function fmtCurrency(v) {
@@ -231,6 +234,30 @@ function OSTaskCard({
                   <Badge color={task.difficulty === 'Alta' ? 'red' : task.difficulty === 'Média' ? 'yellow' : 'blue'}>
                     {task.difficulty}
                   </Badge>
+                </>
+              )}
+              {task.estimated_hours > 0 && (
+                <>
+                  <span className="text-warm-300">|</span>
+                  <span className="text-[10px] text-warm-500 font-mono flex items-center gap-0.5" title="Horas Estimadas">
+                    <Clock size={10} />{task.estimated_hours}h
+                  </span>
+                </>
+              )}
+              {task.estimated_cost > 0 && (
+                <>
+                  <span className="text-warm-300">|</span>
+                  <span className="text-[10px] text-warm-500 font-mono flex items-center gap-0.5" title="Valor Distribuído">
+                    <DollarSign size={10} />{fmtCurrency(task.estimated_cost)}
+                  </span>
+                </>
+              )}
+              {task.estimated_cost > 0 && task.estimated_hours > 0 && (
+                <>
+                  <span className="text-warm-300">|</span>
+                  <span className="text-[10px] text-brand-600 font-mono font-bold" title="Valor por Hora">
+                    {fmtCurrency(task.estimated_cost / task.estimated_hours)}/h
+                  </span>
                 </>
               )}
               {subtasks.length > 0 && (
@@ -635,6 +662,40 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
   const isApproved = os.status === 'approved';
   const canCreateTasks = os.status === 'approved' || os.status === 'proposal';
 
+  const [markingAllComplete, setMarkingAllComplete] = useState(false);
+
+  const handleMarkAllComplete = async () => {
+    if (!window.confirm('Marcar todas as tarefas, subtarefas e checklists desta OS como concluídos?')) return;
+    setMarkingAllComplete(true);
+    try {
+      const taskIds = allOSTasks.map(t => t.id);
+      if (taskIds.length > 0) {
+        // Update all tasks and subtasks to 'done'
+        const { error: taskError } = await supabase.from('tasks')
+          .update({ status: 'done' })
+          .in('id', taskIds);
+        if (taskError) throw taskError;
+
+        // Get all checklists for these tasks
+        const checklistsOfOS = allChecklists.filter(c => taskIds.includes(c.task_id));
+        const checklistIds = checklistsOfOS.map(c => c.id);
+        if (checklistIds.length > 0) {
+          // Update all checklist items to completed = true
+          const { error: checklistError } = await supabase.from('checklist_items')
+            .update({ completed: true })
+            .in('checklist_id', checklistIds);
+          if (checklistError) throw checklistError;
+        }
+      }
+      await refreshProject();
+    } catch (err) {
+      console.error('Erro ao marcar tudo como concluído:', err);
+      alert('Erro ao concluir tudo: ' + err.message);
+    } finally {
+      setMarkingAllComplete(false);
+    }
+  };
+
   const handleCreateTask = async (e) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
@@ -870,7 +931,13 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
 
   const completedTasks = osTasks.filter(t => t.status === 'done').length;
   const progressFromTasks = osTasks.length
-    ? Math.round((completedTasks / osTasks.length) * 100)
+    ? osTasks.reduce((sum, task) => {
+        const subtasks = allOSTasks.filter(t => t.parent_task_id === task.id);
+        const pct = subtasks.length
+          ? (subtasks.filter(t => t.status === 'done').length / subtasks.length) * 100
+          : (task.status === 'done' ? 100 : 0);
+        return sum + Math.floor(pct / osTasks.length);
+      }, 0)
     : (os.progress_percent || 0);
 
   const STATUS_TRANSITIONS = {
@@ -889,8 +956,15 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
       { to: 'draft',    label: 'Voltar a Rascunho', variant: 'ghost' },
     ],
     approved: [
-      { to: 'proposal', label: 'Voltar para Proposta', variant: 'secondary' },
-      { to: 'declined', label: 'Encerrar OS', variant: 'danger' },
+      { to: 'completed', label: 'Concluir OS', variant: 'success' },
+      { to: 'cancelled', label: 'Cancelar OS', variant: 'danger' },
+      { to: 'proposal',  label: 'Voltar para Proposta', variant: 'secondary' },
+    ],
+    completed: [
+      { to: 'approved',  label: 'Reabrir OS', variant: 'secondary' },
+    ],
+    cancelled: [
+      { to: 'approved',  label: 'Reabrir OS', variant: 'secondary' },
     ],
     declined: [
       { to: 'proposal', label: 'Voltar para Proposta', variant: 'secondary' },
@@ -926,7 +1000,7 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
               {t.label}
             </Button>
           ))}
-          {os.status !== 'declined' && (
+          {os.status !== 'declined' && os.status !== 'cancelled' && os.status !== 'completed' && (
             <Button variant="secondary" icon={Pencil} onClick={() => setShowEditForm(!showEditForm)}>
               {showEditForm ? 'Cancelar Edição' : 'Editar'}
             </Button>
@@ -1091,17 +1165,24 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
               </span>
             )}
           </h4>
-          {canCreateTasks ? (
-            <Button variant={showTaskForm ? 'outline' : 'primary'} icon={showTaskForm ? null : Plus}
-              onClick={() => setShowTaskForm(!showTaskForm)}>
-              {showTaskForm ? 'Cancelar' : 'Nova Tarefa'}
-            </Button>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
-              <Lock size={12} className="text-amber-600" />
-              <span className="text-xs font-medium text-amber-700">OS não aprovada</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {allOSTasks.length > 0 && canCreateTasks && (
+              <Button variant="success" icon={Check} loading={markingAllComplete} onClick={handleMarkAllComplete}>
+                Concluir Tudo
+              </Button>
+            )}
+            {canCreateTasks ? (
+              <Button variant={showTaskForm ? 'outline' : 'primary'} icon={showTaskForm ? null : Plus}
+                onClick={() => setShowTaskForm(!showTaskForm)}>
+                {showTaskForm ? 'Cancelar' : 'Nova Tarefa'}
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
+                <Lock size={12} className="text-amber-600" />
+                <span className="text-xs font-medium text-amber-700">OS não aprovada</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Aviso de OS em proposta ou bloqueada */}
@@ -1166,17 +1247,12 @@ function OSDetailView({ os, proj, onBack, onStatusChange, onDelete, refreshProje
                     className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-3 py-2 text-sm focus:outline-none" />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-warm-500 uppercase mb-1">Stack / Tecnologias</label>
                   <input value={taskStack} onChange={e => setTaskStack(e.target.value)}
                     placeholder="Ex: React, Node.js..."
                     className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-4 py-2 text-sm focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-warm-500 uppercase mb-1">Custo Estimado (R$)</label>
-                  <input type="number" value={taskCost} onChange={e => setTaskCost(e.target.value)} min="0" step="0.01"
-                    className="w-full bg-warm-200/60 border border-warm-400/60 rounded-xl px-3 py-2 text-sm focus:outline-none" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-1">
@@ -1428,7 +1504,7 @@ function OSCard({ os, onSelect, onDelete }) {
             </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-warm-200 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-700 ${(os.status === 'approved' || os.status === 'proposal') ? 'bg-brand-500' : 'bg-warm-400'}`}
+                <div className={`h-full rounded-full transition-all duration-700 ${(os.status === 'approved' || os.status === 'proposal' || os.status === 'completed') ? 'bg-brand-500' : 'bg-warm-400'}`}
                   style={{ width: `${pct}%` }} />
               </div>
               <span className="font-mono font-bold text-warm-700 text-[10px]">{pct}%</span>
