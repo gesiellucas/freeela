@@ -484,6 +484,7 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask, onTaskClick
 const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onTaskClick }) => {
   const calendarRef = useRef(null);
   const instRef = useRef(null);
+  const [showUnscheduled, setShowUnscheduled] = useState(false);
 
   // Mapear OS ativas/aprovadas como recursos
   const calendarResources = useMemo(() => {
@@ -495,22 +496,88 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           list.push({
             id: os.id,
             title: `${p.title} - ${os.title}`,
+            companyName: p.title,
+            osTitle: os.title
           });
         }
       });
     });
-    // Adiciona recurso default para tarefas sem OS
-    list.push({
-      id: 'sem-os',
-      title: 'Sem OS (Geral)',
-    });
     return list;
+  }, [activeProjects]);
+
+  // Calcular limites de scroll horizontal dinamicamente
+  const calendarRangeAndDate = useMemo(() => {
+    let minDate = null;
+    let maxDate = null;
+
+    activeProjects.forEach(p => {
+      const serviceOrders = p.service_orders || [];
+      serviceOrders.forEach(os => {
+        if (os.status === 'approved') {
+          if (os.planned_start_date) {
+            const d = new Date(os.planned_start_date + 'T00:00:00');
+            if (!minDate || d < minDate) {
+              minDate = d;
+            }
+          }
+          if (os.planned_end_date) {
+            const d = new Date(os.planned_end_date + 'T00:00:00');
+            if (!maxDate || d > maxDate) {
+              maxDate = d;
+            }
+          }
+        }
+      });
+    });
+
+    // Fallbacks
+    if (!minDate) {
+      minDate = new Date();
+      minDate.setDate(minDate.getDate() - 30);
+    } else {
+      minDate = new Date(minDate);
+      minDate.setDate(minDate.getDate() - 2); // 2 days margin
+    }
+
+    if (!maxDate) {
+      maxDate = new Date();
+      maxDate.setDate(maxDate.getDate() + 30);
+    } else {
+      maxDate = new Date(maxDate);
+      maxDate.setDate(maxDate.getDate() + 2); // 2 days margin
+    }
+
+    const format = (d) => {
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let initialDate = today;
+    if (today < minDate) {
+      initialDate = minDate;
+    } else if (today > maxDate) {
+      initialDate = maxDate;
+    }
+
+    return {
+      validRange: {
+        start: format(minDate),
+        end: format(maxDate)
+      },
+      initialDate: format(initialDate)
+    };
   }, [activeProjects]);
 
   // Mapear tarefas e subtarefas agendadas como eventos
   const calendarEvents = useMemo(() => {
     const taskMap = new Map(tasks.map(t => [t.id, t]));
     const eventsList = [];
+    const approvedOsIds = new Set(
+      activeProjects.flatMap(p => (p.service_orders || []).filter(os => os.status === 'approved').map(os => os.id))
+    );
 
     tasks.forEach(t => {
       // Encontra a OS efetiva da tarefa (se for subtarefa, herda da tarefa pai se ela tiver)
@@ -521,7 +588,10 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           soId = parent.service_order_id;
         }
       }
-      const rId = soId || 'sem-os';
+
+      if (!soId || !approvedOsIds.has(soId)) {
+        return;
+      }
 
       // Verifica datas de execução
       let startStr = t.start_date;
@@ -559,9 +629,9 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
 
         eventsList.push({
           id: t.id,
-          resourceIds: [rId],
-          start: startStr,
-          end: endStr,
+          resourceIds: [soId],
+          start: new Date(startStr),
+          end: new Date(endStr),
           title: isSubtask ? `↳ ${t.title}` : t.title,
           editable: true,
           backgroundColor: bgColor,
@@ -576,7 +646,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
     });
 
     return eventsList;
-  }, [tasks]);
+  }, [tasks, activeProjects]);
 
   // Lista de tarefas sem nenhum agendamento
   const unscheduledTasks = useMemo(() => {
@@ -591,8 +661,29 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
     
     today.setHours(10, 0, 0, 0);
     const endStr = today.toISOString();
+
+    // Encontra a OS
+    let targetOsId = task.service_order_id;
+    if (!targetOsId && task.parent_task_id) {
+      const parent = tasks.find(t => t.id === task.parent_task_id);
+      if (parent) {
+        targetOsId = parent.service_order_id;
+      }
+    }
     
-    await onUpdateTaskExecutionDates(task.id, task.project_id, startStr, endStr);
+    if (!targetOsId && task.project) {
+      const approvedOs = (task.project.service_orders || []).find(os => os.status === 'approved');
+      if (approvedOs) {
+        targetOsId = approvedOs.id;
+      }
+    }
+    
+    if (!targetOsId) {
+      alert("Para agendar esta tarefa, o projeto precisa ter pelo menos uma Ordem de Serviço aprovada.");
+      return;
+    }
+    
+    await onUpdateTaskExecutionDates(task.id, task.project_id, startStr, endStr, targetOsId);
   };
 
   useEffect(() => {
@@ -604,19 +695,21 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           view: 'resourceTimelineDay',
           resources: calendarResources,
           events: calendarEvents,
+          validRange: calendarRangeAndDate.validRange,
+          date: calendarRangeAndDate.initialDate,
           editable: true,
           slotMinTime: '06:00:00',
           slotMaxTime: '22:00:00',
           headerToolbar: {
             start: 'prev,next today',
             center: 'title',
-            end: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
+            end: 'resourceTimelineDay,resourceTimelineWeek,resourceTimelineMonth'
           },
           buttonText: {
             today: 'Hoje',
-            resourceTimelineDay: 'Dia (Recursos)',
-            resourceTimelineWeek: 'Semana (Recursos)',
-            dayGridMonth: 'Mês',
+            resourceTimelineDay: 'Dia',
+            resourceTimelineWeek: 'Semana',
+            resourceTimelineMonth: 'Mês',
             prev: 'Anterior',
             next: 'Próximo'
           },
@@ -626,12 +719,36 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
             },
             resourceTimelineWeek: {
             },
-            dayGridMonth: {
+            resourceTimelineMonth: {
             }
           },
           locale: 'pt-br',
           firstDay: 1, // Segunda
           allDaySlot: false,
+          resourceLabelContent: (info) => {
+            const companyName = info.resource.companyName || info.resource.extendedProps?.companyName;
+            const osTitle = info.resource.osTitle || info.resource.extendedProps?.osTitle;
+            if (companyName && osTitle) {
+              return {
+                html: `<div class="flex flex-col py-1">
+                  <span class="text-[10px] text-warm-500 font-semibold leading-tight">${companyName}</span>
+                  <span class="text-xs text-warm-900 font-bold leading-snug mt-0.5">${osTitle}</span>
+                </div>`
+              };
+            }
+            if (info.resource.title) {
+              const parts = info.resource.title.split(' - ');
+              if (parts.length > 1) {
+                return {
+                  html: `<div class="flex flex-col py-1">
+                    <span class="text-[10px] text-warm-500 font-semibold leading-tight">${parts[0]}</span>
+                    <span class="text-xs text-warm-900 font-bold leading-snug mt-0.5">${parts.slice(1).join(' - ')}</span>
+                  </div>`
+                };
+              }
+            }
+            return info.resource.title;
+          },
           eventClick: (info) => {
             if (info.event && info.event.extendedProps && info.event.extendedProps.task) {
               onTaskClick(info.event.extendedProps.task);
@@ -676,8 +793,9 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
     if (instRef.current) {
       instRef.current.setOption('resources', calendarResources);
       instRef.current.setOption('events', calendarEvents);
+      instRef.current.setOption('validRange', calendarRangeAndDate.validRange);
     }
-  }, [calendarResources, calendarEvents]);
+  }, [calendarResources, calendarEvents, calendarRangeAndDate]);
 
   return (
     <div className="bg-warm-50 border border-warm-300/60 rounded-2xl shadow-card overflow-hidden">
@@ -688,12 +806,29 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           <h2 className="text-xs font-bold text-warm-900 uppercase tracking-wider">Agenda & Planejamento Diário</h2>
           <span className="text-[10px] text-warm-400 hidden sm:inline">Planeje e organize tarefas arrastando pelo cronograma</span>
         </div>
+        <button
+          onClick={() => setShowUnscheduled(!showUnscheduled)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm
+            ${showUnscheduled 
+              ? 'bg-warm-200 text-warm-800 border-warm-350 hover:bg-warm-250' 
+              : 'bg-brand-500 text-warm-900 border-brand-600 hover:bg-brand-400'
+            }`}
+        >
+          <List size={12} />
+          <span>Sem Agendamento ({unscheduledTasks.length})</span>
+          <ChevronDown size={12} className={`transition-transform duration-200 ${showUnscheduled ? 'rotate-180' : ''}`} />
+        </button>
       </div>
 
       <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-warm-200">
         {/* Painel lateral de tarefas sem agendamento */}
-        <div className="w-full lg:w-64 p-4 flex flex-col bg-warm-100/20">
-          <div className="flex items-center justify-between mb-3">
+        <div className={`transition-all duration-300 ease-in-out flex flex-col bg-warm-100/20 overflow-hidden
+          ${showUnscheduled 
+            ? 'w-full lg:w-64 p-4 opacity-100 border-b lg:border-b-0 lg:border-r border-warm-200 max-h-[1000px]' 
+            : 'w-0 h-0 lg:h-auto lg:w-0 p-0 opacity-0 border-0 max-h-0 lg:max-h-[1000px]'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-warm-500">Sem Agendamento ({unscheduledTasks.length})</h3>
           </div>
           <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-1 flex-1 flex-shrink-0">
@@ -703,7 +838,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
               unscheduledTasks.map(task => {
                 const isSubtask = !!task.parent_task_id;
                 return (
-                  <div key={task.id} className="p-3 bg-warm-50 border border-warm-200 rounded-xl space-y-2 hover:border-warm-400 transition-colors shadow-sm">
+                  <div key={task.id} className="p-3 bg-warm-50 border border-warm-200 rounded-xl space-y-2 hover:border-warm-400 transition-colors shadow-sm min-w-[200px]">
                     <span className="text-xs font-semibold text-warm-900 leading-tight block">
                       {isSubtask ? `↳ ${task.title}` : task.title}
                     </span>
