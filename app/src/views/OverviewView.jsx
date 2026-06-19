@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -25,6 +25,14 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { updateTaskStatus, supabase, getTaskMediaFiles } from '../lib/supabase';
+
+// EventCalendar Imports
+import EventCalendar from '@event-calendar/core';
+import DayGrid from '@event-calendar/day-grid';
+import TimeGrid from '@event-calendar/time-grid';
+import ResourceTimeline from '@event-calendar/resource-timeline';
+import Interaction from '@event-calendar/interaction';
+import '@event-calendar/core/index.css';
 import FileUploader from '../components/ui/FileUploader';
 
 // ─── Constante de data do dia (módulo-level, atualizado ao recarregar a página) ──
@@ -471,100 +479,262 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask, onTaskClick
   );
 };
 
-// ─── Bloco Agenda do Dia ──────────────────────────────────────────────────────
+// ─── Bloco Agenda do Dia / Cronograma de Recursos (EventCalendar) ────────────
 
-const DayAgenda = ({ tasks }) => {
-  const agendaTasks = useMemo(() =>
-    [...tasks]
-      .filter(t => t.status !== 'done' && t.status !== 'waiting')
-      .sort((a, b) => scoreTask(b) - scoreTask(a))
-      .slice(0, 8),
-    [tasks]
-  );
+const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onTaskClick }) => {
+  const calendarRef = useRef(null);
+  const instRef = useRef(null);
 
-  const blocks    = useMemo(() => buildAgendaBlocks(agendaTasks), [agendaTasks]);
-  const allStacks = useMemo(() => [...new Set(agendaTasks.map(t => t.development_stack).filter(Boolean))], [agendaTasks]);
-  const totalHours = agendaTasks.reduce((sum, t) => sum + (t.estimated_hours || 1), 0);
+  // Mapear OS ativas/aprovadas como recursos
+  const calendarResources = useMemo(() => {
+    const list = [];
+    activeProjects.forEach(p => {
+      const serviceOrders = p.service_orders || [];
+      serviceOrders.forEach(os => {
+        if (os.status === 'approved') {
+          list.push({
+            id: os.id,
+            title: `${p.title} - ${os.title}`,
+          });
+        }
+      });
+    });
+    // Adiciona recurso default para tarefas sem OS
+    list.push({
+      id: 'sem-os',
+      title: 'Sem OS (Geral)',
+    });
+    return list;
+  }, [activeProjects]);
 
-  if (blocks.length === 0) return null;
+  // Mapear tarefas e subtarefas agendadas como eventos
+  const calendarEvents = useMemo(() => {
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+    const eventsList = [];
+
+    tasks.forEach(t => {
+      // Encontra a OS efetiva da tarefa (se for subtarefa, herda da tarefa pai se ela tiver)
+      let soId = t.service_order_id;
+      if (!soId && t.parent_task_id) {
+        const parent = taskMap.get(t.parent_task_id);
+        if (parent) {
+          soId = parent.service_order_id;
+        }
+      }
+      const rId = soId || 'sem-os';
+
+      // Verifica datas de execução
+      let startStr = t.start_date;
+      let endStr = t.end_date;
+
+      // Fallback: se tiver apenas due_date, inicia 1 hora antes do due_date e termina no due_date
+      if (!startStr && !endStr && t.due_date) {
+        endStr = t.due_date;
+        const d = new Date(t.due_date);
+        d.setHours(d.getHours() - 1);
+        startStr = d.toISOString();
+      }
+
+      if (startStr && endStr) {
+        const isSubtask = !!t.parent_task_id;
+        
+        // Estilo de cores baseado no status
+        let bgColor = '#FDE047'; // amarelo padrão do Freeela
+        let txtColor = '#78350F';
+        let borderColor = '#F59E0B';
+
+        if (t.status === 'done') {
+          bgColor = '#D1FAE5'; // verde suave
+          txtColor = '#065F46';
+          borderColor = '#A7F3D0';
+        } else if (t.status === 'doing') {
+          bgColor = '#DBEAFE'; // azul suave
+          txtColor = '#1E40AF';
+          borderColor = '#BFDBFE';
+        } else if (isSubtask) {
+          bgColor = '#FEF3C7'; // âmbar bem claro para subtarefas
+          txtColor = '#92400E';
+          borderColor = '#FCD34D';
+        }
+
+        eventsList.push({
+          id: t.id,
+          resourceIds: [rId],
+          start: startStr,
+          end: endStr,
+          title: isSubtask ? `↳ ${t.title}` : t.title,
+          editable: true,
+          backgroundColor: bgColor,
+          textColor: txtColor,
+          borderColor: borderColor,
+          extendedProps: {
+            task: t,
+            isSubtask
+          }
+        });
+      }
+    });
+
+    return eventsList;
+  }, [tasks]);
+
+  // Lista de tarefas sem nenhum agendamento
+  const unscheduledTasks = useMemo(() => {
+    return tasks.filter(t => !t.start_date && !t.end_date && !t.due_date);
+  }, [tasks]);
+
+  // Agendar tarefa para hoje às 09:00 - 10:00
+  const handleScheduleToday = async (task) => {
+    const today = new Date();
+    today.setHours(9, 0, 0, 0);
+    const startStr = today.toISOString();
+    
+    today.setHours(10, 0, 0, 0);
+    const endStr = today.toISOString();
+    
+    await onUpdateTaskExecutionDates(task.id, task.project_id, startStr, endStr);
+  };
+
+  useEffect(() => {
+    const ec = new EventCalendar({
+      target: calendarRef.current,
+      props: {
+        plugins: [DayGrid, TimeGrid, ResourceTimeline, Interaction],
+        options: {
+          view: 'resourceTimelineDay',
+          resources: calendarResources,
+          events: calendarEvents,
+          editable: true,
+          slotMinTime: '06:00:00',
+          slotMaxTime: '22:00:00',
+          headerToolbar: {
+            start: 'prev,next today',
+            center: 'title',
+            end: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
+          },
+          buttonText: {
+            today: 'Hoje',
+            resourceTimelineDay: 'Dia (Recursos)',
+            resourceTimelineWeek: 'Semana (Recursos)',
+            dayGridMonth: 'Mês',
+            prev: 'Anterior',
+            next: 'Próximo'
+          },
+          views: {
+            resourceTimelineDay: {
+              titleFormat: { year: 'numeric', month: 'long', day: 'numeric' }
+            },
+            resourceTimelineWeek: {
+            },
+            dayGridMonth: {
+            }
+          },
+          locale: 'pt-br',
+          firstDay: 1, // Segunda
+          allDaySlot: false,
+          eventClick: (info) => {
+            if (info.event && info.event.extendedProps && info.event.extendedProps.task) {
+              onTaskClick(info.event.extendedProps.task);
+            }
+          },
+          eventDrop: (info) => {
+            const taskId = info.event.id;
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            const newStart = info.event.start.toISOString();
+            const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
+            const newResourceId = info.newResource ? info.newResource.id : (info.event.resourceIds ? info.event.resourceIds[0] : undefined);
+            
+            onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd, newResourceId).catch(() => {
+              info.revert();
+            });
+          },
+          eventResize: (info) => {
+            const taskId = info.event.id;
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            const newStart = info.event.start.toISOString();
+            const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
+            
+            onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd).catch(() => {
+              info.revert();
+            });
+          }
+        }
+      }
+    });
+
+    instRef.current = ec;
+
+    return () => {
+      ec.destroy();
+    };
+  }, []);
+
+  // Sincroniza dados com a instância do calendário
+  useEffect(() => {
+    if (instRef.current) {
+      instRef.current.setOption('resources', calendarResources);
+      instRef.current.setOption('events', calendarEvents);
+    }
+  }, [calendarResources, calendarEvents]);
 
   return (
     <div className="bg-warm-50 border border-warm-300/60 rounded-2xl shadow-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-warm-200 flex items-center justify-between">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-warm-200 flex items-center justify-between flex-wrap gap-3 bg-warm-100/30">
         <div className="flex items-center gap-2">
           <CalendarDays size={14} className="text-brand-500" />
-          <h2 className="text-xs font-bold text-warm-900 uppercase tracking-wider">Agenda do Dia</h2>
-          <span className="text-[10px] text-warm-400 hidden sm:inline">sugestão baseada em prioridade</span>
+          <h2 className="text-xs font-bold text-warm-900 uppercase tracking-wider">Agenda & Planejamento Diário</h2>
+          <span className="text-[10px] text-warm-400 hidden sm:inline">Planeje e organize tarefas arrastando pelo cronograma</span>
         </div>
-        <span className="text-xs text-warm-500 flex items-center gap-1">
-          <Timer size={10} className="text-warm-400" />
-          ~{totalHours}h planejadas
-        </span>
       </div>
 
-      <div className="p-5 space-y-5">
-        {/* Blocos de tempo */}
-        <div className="space-y-2">
-          {blocks.map(block => {
-            const colorCls = stackColorClass(block.task.development_stack, allStacks);
-            return (
-              <div key={block.task.id} className="flex items-center gap-3">
-                {/* Horário de início */}
-                <div className="w-16 text-right flex-shrink-0">
-                  <span className="text-[11px] font-mono text-warm-400">{block.start}</span>
-                </div>
-
-                {/* Card da tarefa */}
-                <div className={`flex-1 flex items-center gap-3 border rounded-xl px-4 py-2.5 transition-shadow ${colorCls}
-                  ${block.task.status === 'doing' ? 'ring-2 ring-blue-300 ring-offset-1' : ''}`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate">{block.task.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] opacity-60 truncate max-w-[120px]">{block.task.project?.title}</span>
-                      {block.task.status === 'doing' && (
-                        <span className="text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">em andamento</span>
-                      )}
+      <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-warm-200">
+        {/* Painel lateral de tarefas sem agendamento */}
+        <div className="w-full lg:w-64 p-4 flex flex-col bg-warm-100/20">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-warm-500">Sem Agendamento ({unscheduledTasks.length})</h3>
+          </div>
+          <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-1 flex-1 flex-shrink-0">
+            {unscheduledTasks.length === 0 ? (
+              <p className="text-xs text-warm-400 italic py-2 text-center">Todas as tarefas estão agendadas!</p>
+            ) : (
+              unscheduledTasks.map(task => {
+                const isSubtask = !!task.parent_task_id;
+                return (
+                  <div key={task.id} className="p-3 bg-warm-50 border border-warm-200 rounded-xl space-y-2 hover:border-warm-400 transition-colors shadow-sm">
+                    <span className="text-xs font-semibold text-warm-900 leading-tight block">
+                      {isSubtask ? `↳ ${task.title}` : task.title}
+                    </span>
+                    {task.project && (
+                      <span className="text-[9px] text-warm-400 font-medium block truncate">{task.project.title}</span>
+                    )}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <button
+                        onClick={() => handleScheduleToday(task)}
+                        className="px-2 py-1 bg-brand-500 hover:bg-brand-400 text-warm-900 rounded-lg text-[9px] font-bold transition-colors flex items-center gap-0.5"
+                      >
+                        <Plus size={10} /> Agendar Hoje
+                      </button>
+                      <button
+                        onClick={() => onTaskClick(task)}
+                        className="px-2 py-1 border border-warm-300 hover:bg-warm-200 text-warm-600 rounded-lg text-[9px] font-semibold transition-colors"
+                      >
+                        Detalhes
+                      </button>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono opacity-50 flex-shrink-0">{block.hours}h</span>
-                </div>
-
-                {/* Horário de término */}
-                <div className="w-16 flex-shrink-0">
-                  <span className="text-[11px] font-mono text-warm-300">{block.end}</span>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })
+            )}
+          </div>
         </div>
 
-        {/* Contextos de trabalho (só aparece se há múltiplas stacks) */}
-        {allStacks.length > 1 && (
-          <div className="pt-4 border-t border-warm-200">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-warm-400 mb-3">Contextos de trabalho hoje</p>
-            <div className="flex flex-wrap gap-2">
-              {allStacks.map(stack => {
-                const count = agendaTasks.filter(t => t.development_stack === stack).length;
-                const hrs   = agendaTasks.filter(t => t.development_stack === stack).reduce((s, t) => s + (t.estimated_hours || 1), 0);
-                return (
-                  <div key={stack} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${stackColorClass(stack, allStacks)}`}>
-                    <Code2 size={10} />
-                    <span>{stack}</span>
-                    <span className="opacity-50">· {count}t · {hrs}h</span>
-                  </div>
-                );
-              })}
-              {agendaTasks.filter(t => !t.development_stack).length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-warm-200 bg-warm-100 text-warm-600 text-xs font-semibold">
-                  <Hash size={10} />
-                  <span>Geral</span>
-                  <span className="opacity-50">· {agendaTasks.filter(t => !t.development_stack).length}t</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Componente do Calendário */}
+        <div className="flex-1 p-4 overflow-x-auto min-w-0 bg-warm-50">
+          <div ref={calendarRef} className="ec-calendar-wrapper" />
+        </div>
       </div>
     </div>
   );
@@ -659,8 +829,10 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
         aVal = (a.project?.title || '').toLowerCase();
         bVal = (b.project?.title || '').toLowerCase();
       } else if (sortField === 'due_date') {
-        aVal = a.due_date ? new Date(a.due_date).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
-        bVal = b.due_date ? new Date(b.due_date).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+        const aDate = a.start_date || a.due_date;
+        const bDate = b.start_date || b.due_date;
+        aVal = aDate ? new Date(aDate).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+        bVal = bDate ? new Date(bDate).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
       } else if (sortField === 'status') {
         aVal = a.status;
         bVal = b.status;
@@ -908,12 +1080,12 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingTaskId(parent.id);
-                              setTempDate(parent.due_date ? toDatetimeLocalString(parent.due_date) : '');
+                              setTempDate(parent.start_date ? toDatetimeLocalString(parent.start_date) : (parent.due_date ? toDatetimeLocalString(parent.due_date) : ''));
                             }}
                             className="inline-flex items-center gap-1.5 hover:bg-warm-200/60 px-2 py-1 rounded-lg border border-transparent hover:border-warm-300/40 text-left transition-all group/date"
-                            title="Clique para alterar a data e hora"
+                            title="Clique para alterar a data e hora de início"
                           >
-                            <DueDateChip dateStr={parent.due_date} status={parent.status} literal={true} />
+                            <DueDateChip dateStr={parent.start_date || parent.due_date} status={parent.status} literal={true} />
                             <Calendar size={11} className="text-warm-400 opacity-0 group-hover/date:opacity-100 transition-opacity" />
                           </button>
                         )}
@@ -1023,12 +1195,12 @@ const TaskTableBlock = ({ tasks, projects, onMarkDoing, onMarkDone, onMarkTask, 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditingTaskId(child.id);
-                                    setTempDate(child.due_date ? toDatetimeLocalString(child.due_date) : '');
+                                    setTempDate(child.start_date ? toDatetimeLocalString(child.start_date) : (child.due_date ? toDatetimeLocalString(child.due_date) : ''));
                                   }}
                                   className="inline-flex items-center gap-1.5 hover:bg-warm-200/60 px-2 py-1 rounded-lg border border-transparent hover:border-warm-300/40 text-left transition-all group/date"
-                                  title="Clique para alterar a data e hora"
+                                  title="Clique para alterar a data e hora de início"
                                 >
-                                  <DueDateChip dateStr={child.due_date} status={child.status} literal={true} />
+                                  <DueDateChip dateStr={child.start_date || child.due_date} status={child.status} literal={true} />
                                   <Calendar size={11} className="text-warm-400 opacity-0 group-hover/date:opacity-100 transition-opacity" />
                                 </button>
                               )}
@@ -1170,6 +1342,8 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
   const [modalPriority, setModalPriority] = useState(0);
   const [modalHours, setModalHours] = useState('');
   const [modalDueDate, setModalDueDate] = useState('');
+  const [modalStartDate, setModalStartDate] = useState('');
+  const [modalEndDate, setModalEndDate] = useState('');
   const [savingTaskDetails, setSavingTaskDetails] = useState(false);
 
   const [newSubTitle, setNewSubTitle] = useState('');
@@ -1211,6 +1385,8 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
       setModalPriority(selectedTask.priority ?? 0);
       setModalHours(selectedTask.estimated_hours || '');
       setModalDueDate(selectedTask.due_date ? toDatetimeLocalString(selectedTask.due_date) : '');
+      setModalStartDate(selectedTask.start_date ? toDatetimeLocalString(selectedTask.start_date) : '');
+      setModalEndDate(selectedTask.end_date ? toDatetimeLocalString(selectedTask.end_date) : '');
     }
   }, [selectedTask]);
 
@@ -1260,13 +1436,47 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
 
   const handleUpdateTaskDate = async (taskId, projectId, newDateStr) => {
     const newDate = newDateStr ? new Date(newDateStr).toISOString() : null;
-    setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDate } : t));
+    setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, start_date: newDate } : t));
     try {
-      const { error } = await supabase.from('tasks').update({ due_date: newDate }).eq('id', taskId);
+      const { error } = await supabase.from('tasks').update({ start_date: newDate }).eq('id', taskId);
       if (error) throw error;
-      onUpdateTaskStatus?.(taskId, projectId, undefined, { due_date: newDate });
+      onUpdateTaskStatus?.(taskId, projectId, undefined, { start_date: newDate });
     } catch (err) {
-      console.error('Erro ao atualizar data da tarefa:', err);
+      console.error('Erro ao atualizar data de início da tarefa:', err);
+    }
+  };
+
+  const handleUpdateTaskExecutionDates = async (taskId, projectId, startDateStr, endDateStr, newServiceOrderId = undefined) => {
+    const startDate = startDateStr ? new Date(startDateStr).toISOString() : null;
+    const endDate = endDateStr ? new Date(endDateStr).toISOString() : null;
+    
+    setLocalTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const updated = { ...t, start_date: startDate, end_date: endDate };
+        if (newServiceOrderId !== undefined) {
+          updated.service_order_id = newServiceOrderId === 'sem-os' ? null : newServiceOrderId;
+        }
+        return updated;
+      }
+      return t;
+    }));
+    
+    try {
+      const updates = { start_date: startDate, end_date: endDate };
+      if (newServiceOrderId !== undefined) {
+        updates.service_order_id = newServiceOrderId === 'sem-os' ? null : newServiceOrderId;
+      }
+      
+      const { error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', taskId);
+
+      if (error) throw error;
+      onUpdateTaskStatus?.(taskId, projectId, undefined, updates);
+    } catch (err) {
+      console.error('Erro ao atualizar execução da tarefa:', err);
+      throw err;
     }
   };
 
@@ -1284,6 +1494,8 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
         priority: parseInt(modalPriority),
         estimated_hours: modalHours ? parseFloat(modalHours) : null,
         due_date: modalDueDate ? new Date(modalDueDate).toISOString() : null,
+        start_date: modalStartDate ? new Date(modalStartDate).toISOString() : null,
+        end_date: modalEndDate ? new Date(modalEndDate).toISOString() : null,
       };
 
       const { error } = await supabase
@@ -1474,8 +1686,13 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
         </div>
       </div>
 
-      {/* ── Agenda do Dia ── */}
-      <DayAgenda tasks={localTasks} />
+      {/* ── Agenda do Dia / Cronograma de Recursos ── */}
+      <CalendarAgenda
+        tasks={localTasks}
+        activeProjects={activeProjects}
+        onUpdateTaskExecutionDates={handleUpdateTaskExecutionDates}
+        onTaskClick={setSelectedTask}
+      />
 
       {/* ── Tabela de Todas as Tarefas ── */}
       <TaskTableBlock 
@@ -1680,6 +1897,28 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
                     type="datetime-local"
                     value={modalDueDate}
                     onChange={(e) => setModalDueDate(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-xl px-4 py-2.5 text-xs text-warm-900 outline-none transition-all font-semibold cursor-pointer"
+                  />
+                </div>
+
+                {/* Data de Início da Execução */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-500 block mb-2">Início da Execução</label>
+                  <input
+                    type="datetime-local"
+                    value={modalStartDate}
+                    onChange={(e) => setModalStartDate(e.target.value)}
+                    className="w-full bg-warm-50 border border-warm-300 rounded-xl px-4 py-2.5 text-xs text-warm-900 outline-none transition-all font-semibold cursor-pointer"
+                  />
+                </div>
+
+                {/* Data de Fim da Execução */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-500 block mb-2">Fim da Execução</label>
+                  <input
+                    type="datetime-local"
+                    value={modalEndDate}
+                    onChange={(e) => setModalEndDate(e.target.value)}
                     className="w-full bg-warm-50 border border-warm-300 rounded-xl px-4 py-2.5 text-xs text-warm-900 outline-none transition-all font-semibold cursor-pointer"
                   />
                 </div>

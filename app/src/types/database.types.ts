@@ -381,6 +381,8 @@ export interface Task {
   difficulty?: string | null
   development_stack?: string | null
   parent_task_id?: string | null
+  start_date?: string | null
+  end_date?: string | null
   tags?: string[] | null
   attachments?: Json
   metadata?: Json
@@ -407,6 +409,8 @@ export interface TaskInsert {
   difficulty?: string | null
   development_stack?: string | null
   parent_task_id?: string | null
+  start_date?: string | null
+  end_date?: string | null
   tags?: string[] | null
   attachments?: Json
   metadata?: Json
@@ -430,6 +434,8 @@ export interface TaskUpdate {
   difficulty?: string | null
   development_stack?: string | null
   parent_task_id?: string | null
+  start_date?: string | null
+  end_date?: string | null
   tags?: string[] | null
   attachments?: Json
   metadata?: Json

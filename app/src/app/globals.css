@@ -83,3 +83,89 @@
   0%   { opacity: 0; transform: scale(0.96); }
   100% { opacity: 1; transform: scale(1); }
 }
+
+/* EventCalendar Theme Customizations */
+.ec {
+  --ec-bg-color: #FAF8F4;
+  --ec-border-color: #E6E1DA;
+  --ec-text-color: #2B2B2B;
+  --ec-event-bg-color: #FCD34D;
+  --ec-event-text-color: #78350F;
+  --ec-button-bg-color: #FAF8F4;
+  --ec-button-border-color: #D6D0C7;
+  --ec-button-text-color: #5C564F;
+  --ec-button-hover-bg-color: #EBE5DB;
+  --ec-button-active-bg-color: #E2DBD0;
+  --ec-button-active-border-color: #CB9050;
+  --ec-button-active-text-color: #1E1A16;
+  --ec-today-bg-color: rgba(203, 144, 80, 0.04);
+}
+
+.ec-calendar-wrapper {
+  background-color: #FAF8F4;
+}
+
+.ec-event {
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  padding: 4px 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.ec-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  filter: brightness(0.98);
+  cursor: pointer;
+}
+
+.ec-button {
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 12px !important;
+  transition: all 0.15s ease !important;
+}
+
+.ec-button:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(203, 144, 80, 0.25) !important;
+}
+
+.ec-header {
+  border-bottom: 1px solid #E6E1DA;
+  background-color: #FAF8F4;
+}
+
+.ec-resource-header {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5C564F;
+  background-color: #F6F2EB !important;
+  padding: 10px 4px !important;
+  border-bottom: 2px solid #D6D0C7 !important;
+}
+
+.ec-sidebar {
+  background-color: #F6F2EB !important;
+  font-weight: 700;
+  color: #5C564F;
+  font-size: 10px !important;
+}
+
+.ec-time {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 9px !important;
+  color: #8C8479;
+}
+
+.ec-line {
+  border-color: #E6E1DA !important;
+}
+
