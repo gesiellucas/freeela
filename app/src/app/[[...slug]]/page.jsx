@@ -470,10 +470,10 @@ export default function App() {
     }
   }, [userId]);
 
-  const loadAllData = async () => {
+  const loadAllData = async (silent = false) => {
     if (!userId) return;
 
-    setDataLoading(true);
+    if (!silent) setDataLoading(true);
     try {
       const [leadsRes, projectsRes, proposalsRes, contractsRes, fiscalRes, checklistsRes, clientsRes] = await Promise.all([
         getLeads(userId),
@@ -498,7 +498,7 @@ export default function App() {
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     } finally {
-      setDataLoading(false);
+      if (!silent) setDataLoading(false);
     }
   };
 
@@ -1121,7 +1121,7 @@ export default function App() {
                   userId={userId}
                   authUser={user}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
-                  onRefresh={loadAllData}
+                  onRefresh={() => loadAllData(true)}
                 />
               )}
               {activeTab === 'painel' && (
