@@ -484,6 +484,7 @@ const TaskListBlock = ({ tasks, onMarkDoing, onMarkDone, onMarkTask, onTaskClick
 const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onTaskClick }) => {
   const calendarRef = useRef(null);
   const instRef = useRef(null);
+  const prevValidRangeRef = useRef(null);
   const [showUnscheduled, setShowUnscheduled] = useState(false);
 
   // Mapear OS ativas/aprovadas como recursos
@@ -703,13 +704,13 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           headerToolbar: {
             start: 'prev,next today',
             center: 'title',
-            end: 'resourceTimelineDay,resourceTimelineWeek,resourceTimelineMonth'
+            end: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
           },
           buttonText: {
             today: 'Hoje',
             resourceTimelineDay: 'Dia',
             resourceTimelineWeek: 'Semana',
-            resourceTimelineMonth: 'Mês',
+            dayGridMonth: 'Mês',
             prev: 'Anterior',
             next: 'Próximo'
           },
@@ -718,8 +719,10 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
               titleFormat: { year: 'numeric', month: 'long', day: 'numeric' }
             },
             resourceTimelineWeek: {
+              slotDuration: { days: 1 }
             },
-            resourceTimelineMonth: {
+            dayGridMonth: {
+              firstDay: 0
             }
           },
           locale: 'pt-br',
@@ -788,14 +791,23 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
     };
   }, []);
 
+  const validRangeStr = JSON.stringify(calendarRangeAndDate.validRange);
+
   // Sincroniza dados com a instância do calendário
   useEffect(() => {
     if (instRef.current) {
+      const currentDate = instRef.current.getDate();
       instRef.current.setOption('resources', calendarResources);
       instRef.current.setOption('events', calendarEvents);
-      instRef.current.setOption('validRange', calendarRangeAndDate.validRange);
+      if (prevValidRangeRef.current !== validRangeStr) {
+        instRef.current.setOption('validRange', calendarRangeAndDate.validRange);
+        prevValidRangeRef.current = validRangeStr;
+      }
+      if (currentDate) {
+        instRef.current.setOption('date', currentDate);
+      }
     }
-  }, [calendarResources, calendarEvents, calendarRangeAndDate]);
+  }, [calendarResources, calendarEvents, validRangeStr, calendarRangeAndDate.validRange]);
 
   return (
     <div className="bg-warm-50 border border-warm-300/60 rounded-2xl shadow-card overflow-hidden">

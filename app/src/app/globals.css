@@ -170,19 +170,18 @@
 }
 
 /* Custom spacing and layout for timeline view */
-.ec-resource,
-.ec-resource-cell,
-.ec-resource .ec-cell,
-.ec-timeline-cell,
-.ec-timeline-row {
-  padding-top: 2px !important;
-  padding-bottom: 2px !important;
-  min-height: 0 !important;
-}
-
 .ec-resource .ec-cell {
   padding-left: 8px !important;
   padding-right: 8px !important;
+}
+
+/* Allow event titles to wrap and take multiple lines in Month Grid view */
+.ec-dayGridMonth-view .ec-event,
+.ec-dayGrid-view .ec-event {
+  white-space: normal !important;
+  word-break: break-word !important;
+  height: auto !important;
+  min-height: auto !important;
 }
 
 /* Decouple header view buttons with a small gap */
