@@ -485,6 +485,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
   const calendarRef = useRef(null);
   const instRef = useRef(null);
   const prevValidRangeRef = useRef(null);
+  const currentDateRef = useRef(null);
   const [showUnscheduled, setShowUnscheduled] = useState(false);
 
   // Mapear OS ativas/aprovadas como recursos
@@ -701,6 +702,9 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           editable: true,
           slotMinTime: '06:00:00',
           slotMaxTime: '22:00:00',
+          datesSet: (info) => {
+            currentDateRef.current = info.start;
+          },
           headerToolbar: {
             start: 'prev,next today',
             center: 'title',
@@ -796,15 +800,14 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
   // Sincroniza dados com a instância do calendário
   useEffect(() => {
     if (instRef.current) {
-      const currentDate = instRef.current.getDate();
       instRef.current.setOption('resources', calendarResources);
       instRef.current.setOption('events', calendarEvents);
       if (prevValidRangeRef.current !== validRangeStr) {
         instRef.current.setOption('validRange', calendarRangeAndDate.validRange);
         prevValidRangeRef.current = validRangeStr;
       }
-      if (currentDate) {
-        instRef.current.setOption('date', currentDate);
+      if (currentDateRef.current) {
+        instRef.current.setOption('date', currentDateRef.current);
       }
     }
   }, [calendarResources, calendarEvents, validRangeStr, calendarRangeAndDate.validRange]);
