@@ -169,3 +169,42 @@
   border-color: #E6E1DA !important;
 }
 
+/* Custom spacing and layout for timeline view */
+.ec-resource,
+.ec-resource-cell,
+.ec-resource .ec-cell,
+.ec-timeline-cell,
+.ec-timeline-row {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+  min-height: 0 !important;
+}
+
+.ec-resource .ec-cell {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* Decouple header view buttons with a small gap */
+.ec-button-group {
+  display: flex !important;
+  gap: 6px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ec-button-group .ec-button {
+  border-radius: 8px !important;
+  border: 1px solid #D6D0C7 !important;
+  margin: 0 !important;
+}
+
+.ec-button-group .ec-button:not(:first-child) {
+  border-left-width: 1px !important;
+}
+
+.ec-button-group .ec-button.ec-active {
+  border-color: #CB9050 !important;
+}
+

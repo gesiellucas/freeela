@@ -730,9 +730,9 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
             const osTitle = info.resource.osTitle || info.resource.extendedProps?.osTitle;
             if (companyName && osTitle) {
               return {
-                html: `<div class="flex flex-col py-1">
-                  <span class="text-[10px] text-warm-500 font-semibold leading-tight">${companyName}</span>
-                  <span class="text-xs text-warm-900 font-bold leading-snug mt-0.5">${osTitle}</span>
+                html: `<div class="flex flex-col py-0 leading-none">
+                  <span class="text-[9px] text-warm-500 font-semibold leading-none">${companyName}</span>
+                  <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${osTitle}</span>
                 </div>`
               };
             }
@@ -740,9 +740,9 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
               const parts = info.resource.title.split(' - ');
               if (parts.length > 1) {
                 return {
-                  html: `<div class="flex flex-col py-1">
-                    <span class="text-[10px] text-warm-500 font-semibold leading-tight">${parts[0]}</span>
-                    <span class="text-xs text-warm-900 font-bold leading-snug mt-0.5">${parts.slice(1).join(' - ')}</span>
+                  html: `<div class="flex flex-col py-0 leading-none">
+                    <span class="text-[9px] text-warm-500 font-semibold leading-none">${parts[0]}</span>
+                    <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${parts.slice(1).join(' - ')}</span>
                   </div>`
                 };
               }
