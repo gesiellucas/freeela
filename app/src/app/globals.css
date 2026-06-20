@@ -157,6 +157,9 @@
   font-weight: 700;
   color: #5C564F;
   font-size: 10px !important;
+  width: 240px !important;
+  min-width: 240px !important;
+  max-width: 240px !important;
 }
 
 .ec-time {
@@ -170,9 +173,36 @@
 }
 
 /* Custom spacing and layout for timeline view */
-.ec-resource .ec-cell {
-  padding-left: 8px !important;
-  padding-right: 8px !important;
+.ec-calendar-wrapper,
+.ec {
+  width: 100% !important;
+}
+
+.ec-timeline .ec-main {
+  flex-grow: 1 !important;
+}
+
+.ec-timeline .ec-sidebar .ec-resource,
+.ec-timeline .ec-body .ec-days {
+  min-height: 56px !important;
+  box-sizing: border-box !important;
+}
+
+.ec-timeline .ec-sidebar .ec-resource {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 12px !important;
+}
+
+/* Center and adjust label padding inside resource */
+.ec-timeline .ec-sidebar .ec-resource span {
+  padding-top: 0 !important;
+  width: 100%;
+}
+
+/* Prevent last resource from stretching and causing misalignment */
+.ec-timeline .ec-sidebar .ec-resource:last-child {
+  flex-basis: unset !important;
 }
 
 /* Allow event titles to wrap and take multiple lines in Month Grid view */
@@ -205,5 +235,22 @@
 
 .ec-button-group .ec-button.ec-active {
   border-color: #CB9050 !important;
+}
+
+/* Ensure week view occupies full horizontal width */
+.ec-resource-week-view .ec-header .ec-days,
+.ec-resource-week-view .ec-body .ec-content {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.ec-resource-week-view .ec-time,
+.ec-resource-week-view .ec-line {
+  width: auto !important;
+  flex: 1 1 0% !important;
+}
+
+.ec-resource-week-view .ec-lines {
+  width: 100% !important;
 }
 

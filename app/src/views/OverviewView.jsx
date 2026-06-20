@@ -486,6 +486,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
   const instRef = useRef(null);
   const prevValidRangeRef = useRef(null);
   const currentDateRef = useRef(null);
+  const optionsRef = useRef({});
   const [showUnscheduled, setShowUnscheduled] = useState(false);
 
   // Mapear OS ativas/aprovadas como recursos
@@ -634,7 +635,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           resourceIds: [soId],
           start: new Date(startStr),
           end: new Date(endStr),
-          title: isSubtask ? `↳ ${t.title}` : t.title,
+          title: t.title,
           editable: true,
           backgroundColor: bgColor,
           textColor: txtColor,
@@ -689,126 +690,190 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
   };
 
   useEffect(() => {
-    const ec = new EventCalendar({
+    const calculateSlotWidth = (viewType) => {
+      if (viewType === 'resourceTimelineWeek' && calendarRef.current) {
+        const containerWidth = calendarRef.current.clientWidth || 800;
+        const sidebarWidth = 240; // Fixed sidebar width
+        const gridWidth = Math.max(0, containerWidth - sidebarWidth);
+        const calculatedSlotWidth = gridWidth / 7;
+        return calculatedSlotWidth > 40 ? calculatedSlotWidth : 72;
+      }
+      return 72; // Default for day view
+    };
+
+    let ec;
+
+    const handleResize = () => {
+      if (ec && calendarRef.current) {
+        const currentView = optionsRef.current.view || 'resourceTimelineDay';
+        if (currentView === 'resourceTimelineWeek') {
+          optionsRef.current = { ...optionsRef.current, slotWidth: calculateSlotWidth(currentView) };
+          ec.$set({ options: optionsRef.current });
+        }
+      }
+    };
+
+    optionsRef.current = {
+      view: 'resourceTimelineDay',
+      resources: calendarResources,
+      events: calendarEvents,
+      validRange: calendarRangeAndDate.validRange,
+      date: calendarRangeAndDate.initialDate,
+      editable: true,
+      slotMinTime: '06:00:00',
+      slotMaxTime: '22:00:00',
+      eventContent: (info) => {
+        return info.event.title;
+      },
+      datesSet: (info) => {
+        currentDateRef.current = info.start;
+        const viewType = info.view?.type || 'resourceTimelineDay';
+        const newSlotWidth = calculateSlotWidth(viewType);
+        
+        optionsRef.current = { 
+          ...optionsRef.current, 
+          view: viewType, 
+          slotWidth: newSlotWidth 
+        };
+        
+        if (ec && typeof ec.$set === 'function') {
+          ec.$set({ options: optionsRef.current });
+        } else {
+          setTimeout(() => {
+            if (ec && typeof ec.$set === 'function') {
+              ec.$set({ options: optionsRef.current });
+            }
+          }, 0);
+        }
+      },
+      headerToolbar: {
+        start: 'prev,next today',
+        center: 'title',
+        end: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
+      },
+      buttonText: {
+        today: 'Hoje',
+        resourceTimelineDay: 'Dia',
+        resourceTimelineWeek: 'Semana',
+        dayGridMonth: 'Mês',
+        prev: 'Anterior',
+        next: 'Próximo'
+      },
+      views: {
+        resourceTimelineDay: {
+          titleFormat: { year: 'numeric', month: 'long', day: 'numeric' }
+        },
+        resourceTimelineWeek: {
+          slotDuration: { days: 1 }
+        },
+        dayGridMonth: {
+          firstDay: 0
+        }
+      },
+      locale: 'pt-br',
+      firstDay: 1, // Segunda
+      allDaySlot: false,
+      resourceLabelContent: (info) => {
+        const companyName = info.resource.companyName || info.resource.extendedProps?.companyName;
+        const osTitle = info.resource.osTitle || info.resource.extendedProps?.osTitle;
+        if (companyName && osTitle) {
+          return {
+            html: `<div class="flex flex-col py-0 leading-none">
+              <span class="text-[9px] text-warm-500 font-semibold leading-none">${companyName}</span>
+              <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${osTitle}</span>
+            </div>`
+          };
+        }
+        if (info.resource.title) {
+          const parts = info.resource.title.split(' - ');
+          if (parts.length > 1) {
+            return {
+              html: `<div class="flex flex-col py-0 leading-none">
+                <span class="text-[9px] text-warm-500 font-semibold leading-none">${parts[0]}</span>
+                <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${parts.slice(1).join(' - ')}</span>
+              </div>`
+            };
+          }
+        }
+        return info.resource.title;
+      },
+      eventClick: (info) => {
+        if (info.event && info.event.extendedProps && info.event.extendedProps.task) {
+          onTaskClick(info.event.extendedProps.task);
+        }
+      },
+      eventDrop: (info) => {
+        const taskId = info.event.id;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        // Bloquear transferência de tarefas para outras ordens de serviço
+        if (info.newResource) {
+          alert("Não é permitido transferir tarefas para outra Ordem de Serviço.");
+          info.revert();
+          return;
+        }
+
+        const newStart = info.event.start.toISOString();
+        const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
+        const newResourceId = info.newResource ? info.newResource.id : (info.event.resourceIds ? info.event.resourceIds[0] : undefined);
+        
+        onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd, newResourceId).catch(() => {
+          info.revert();
+        });
+      },
+      eventResize: (info) => {
+        const taskId = info.event.id;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const newStart = info.event.start.toISOString();
+        const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
+        
+        onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd).catch(() => {
+          info.revert();
+        });
+      }
+    };
+
+    ec = new EventCalendar({
       target: calendarRef.current,
       props: {
         plugins: [DayGrid, TimeGrid, ResourceTimeline, Interaction],
-        options: {
-          view: 'resourceTimelineDay',
-          resources: calendarResources,
-          events: calendarEvents,
-          validRange: calendarRangeAndDate.validRange,
-          date: calendarRangeAndDate.initialDate,
-          editable: true,
-          slotMinTime: '06:00:00',
-          slotMaxTime: '22:00:00',
-          datesSet: (info) => {
-            currentDateRef.current = info.start;
-          },
-          headerToolbar: {
-            start: 'prev,next today',
-            center: 'title',
-            end: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
-          },
-          buttonText: {
-            today: 'Hoje',
-            resourceTimelineDay: 'Dia',
-            resourceTimelineWeek: 'Semana',
-            dayGridMonth: 'Mês',
-            prev: 'Anterior',
-            next: 'Próximo'
-          },
-          views: {
-            resourceTimelineDay: {
-              titleFormat: { year: 'numeric', month: 'long', day: 'numeric' }
-            },
-            resourceTimelineWeek: {
-              slotDuration: { days: 1 }
-            },
-            dayGridMonth: {
-              firstDay: 0
-            }
-          },
-          locale: 'pt-br',
-          firstDay: 1, // Segunda
-          allDaySlot: false,
-          resourceLabelContent: (info) => {
-            const companyName = info.resource.companyName || info.resource.extendedProps?.companyName;
-            const osTitle = info.resource.osTitle || info.resource.extendedProps?.osTitle;
-            if (companyName && osTitle) {
-              return {
-                html: `<div class="flex flex-col py-0 leading-none">
-                  <span class="text-[9px] text-warm-500 font-semibold leading-none">${companyName}</span>
-                  <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${osTitle}</span>
-                </div>`
-              };
-            }
-            if (info.resource.title) {
-              const parts = info.resource.title.split(' - ');
-              if (parts.length > 1) {
-                return {
-                  html: `<div class="flex flex-col py-0 leading-none">
-                    <span class="text-[9px] text-warm-500 font-semibold leading-none">${parts[0]}</span>
-                    <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${parts.slice(1).join(' - ')}</span>
-                  </div>`
-                };
-              }
-            }
-            return info.resource.title;
-          },
-          eventClick: (info) => {
-            if (info.event && info.event.extendedProps && info.event.extendedProps.task) {
-              onTaskClick(info.event.extendedProps.task);
-            }
-          },
-          eventDrop: (info) => {
-            const taskId = info.event.id;
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            const newStart = info.event.start.toISOString();
-            const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
-            const newResourceId = info.newResource ? info.newResource.id : (info.event.resourceIds ? info.event.resourceIds[0] : undefined);
-            
-            onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd, newResourceId).catch(() => {
-              info.revert();
-            });
-          },
-          eventResize: (info) => {
-            const taskId = info.event.id;
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            const newStart = info.event.start.toISOString();
-            const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
-            
-            onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd).catch(() => {
-              info.revert();
-            });
-          }
-        }
+        options: optionsRef.current
       }
     });
 
     instRef.current = ec;
+    window.addEventListener('resize', handleResize);
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       ec.destroy();
     };
   }, []);
 
   const validRangeStr = JSON.stringify(calendarRangeAndDate.validRange);
 
-  // Sincroniza dados com a instância do calendário
+  // Sincroniza dados com a instância do calendário usando $set
   useEffect(() => {
-    if (instRef.current) {
-      instRef.current.setOption('resources', calendarResources);
-      instRef.current.setOption('events', calendarEvents);
+    if (instRef.current && typeof instRef.current.$set === 'function') {
+      const updatedOptions = {
+        ...optionsRef.current,
+        resources: calendarResources,
+        events: calendarEvents
+      };
+      
       if (prevValidRangeRef.current !== validRangeStr) {
-        instRef.current.setOption('validRange', calendarRangeAndDate.validRange);
+        updatedOptions.validRange = calendarRangeAndDate.validRange;
         prevValidRangeRef.current = validRangeStr;
       }
+      
       if (currentDateRef.current) {
-        instRef.current.setOption('date', currentDateRef.current);
+        updatedOptions.date = currentDateRef.current;
       }
+      
+      optionsRef.current = updatedOptions;
+      instRef.current.$set({ options: optionsRef.current });
     }
   }, [calendarResources, calendarEvents, validRangeStr, calendarRangeAndDate.validRange]);
 
