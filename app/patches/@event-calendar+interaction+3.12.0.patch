@@ -1,0 +1,12 @@
+diff --git a/node_modules/@event-calendar/interaction/index.js b/node_modules/@event-calendar/interaction/index.js
+index b74e360..a73c43f 100644
+--- a/node_modules/@event-calendar/interaction/index.js
++++ b/node_modules/@event-calendar/interaction/index.js
+@@ -302,6 +302,7 @@ function instance$3($$self, $$props, $$invalidate) {
+ 		fromX = toX = jsEvent.clientX;
+ 		fromY = toY = jsEvent.clientY;
+ 		let dayEl = getElementWithPayload(toX, toY);
++		if (!dayEl) { action = ACTION_NO_ACTION; return; }
+ 		({ allDay, date, resource } = getPayload(dayEl)(toX, toY));
+ 
+ 		if (timelineView($view)) {

@@ -487,6 +487,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
   const prevValidRangeRef = useRef(null);
   const currentDateRef = useRef(null);
   const optionsRef = useRef({});
+  const isDraggingRef = useRef(false);
   const [showUnscheduled, setShowUnscheduled] = useState(false);
 
   // Mapear OS ativas/aprovadas como recursos
@@ -797,6 +798,10 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
         }
         return info.resource.title;
       },
+      eventDragStart: () => { isDraggingRef.current = true; },
+      eventDragStop: () => { isDraggingRef.current = false; },
+      eventResizeStart: () => { isDraggingRef.current = true; },
+      eventResizeStop: () => { isDraggingRef.current = false; },
       eventClick: (info) => {
         if (info.event && info.event.extendedProps && info.event.extendedProps.task) {
           onTaskClick(info.event.extendedProps.task);
@@ -856,25 +861,35 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
 
   // Sincroniza dados com a instância do calendário usando $set
   useEffect(() => {
-    if (instRef.current && typeof instRef.current.$set === 'function') {
-      const updatedOptions = {
-        ...optionsRef.current,
-        resources: calendarResources,
-        events: calendarEvents
-      };
-      
-      if (prevValidRangeRef.current !== validRangeStr) {
-        updatedOptions.validRange = calendarRangeAndDate.validRange;
-        prevValidRangeRef.current = validRangeStr;
-      }
-      
-      if (currentDateRef.current) {
-        updatedOptions.date = currentDateRef.current;
-      }
-      
-      optionsRef.current = updatedOptions;
-      instRef.current.$set({ options: optionsRef.current });
+    if (isDraggingRef.current) return;
+    if (!instRef.current || typeof instRef.current.$set !== 'function') return;
+
+    const updatedOptions = {
+      ...optionsRef.current,
+      resources: calendarResources,
+      events: calendarEvents
+    };
+
+    if (prevValidRangeRef.current !== validRangeStr) {
+      updatedOptions.validRange = calendarRangeAndDate.validRange;
+      prevValidRangeRef.current = validRangeStr;
     }
+
+    if (currentDateRef.current) {
+      updatedOptions.date = currentDateRef.current;
+    }
+
+    optionsRef.current = updatedOptions;
+
+    // rAF garante que o Svelte termine o ciclo de mount/update antes do $set
+    // evitando a janela onde .ec-day existe no DOM mas ainda não tem payload
+    const raf = requestAnimationFrame(() => {
+      if (!isDraggingRef.current && instRef.current) {
+        instRef.current.$set({ options: optionsRef.current });
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
   }, [calendarResources, calendarEvents, validRangeStr, calendarRangeAndDate.validRange]);
 
   return (

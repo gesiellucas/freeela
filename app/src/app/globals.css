@@ -200,9 +200,22 @@
   width: 100%;
 }
 
-/* Prevent last resource from stretching and causing misalignment */
+/* Prevent last resource from stretching and causing misalignment.
+   The library sets flex-basis: 100% on :last-child for scroll support,
+   which causes it to fill the entire sidebar height. We lock it to the
+   same fixed height as every other resource row. */
 .ec-timeline .ec-sidebar .ec-resource:last-child {
-  flex-basis: unset !important;
+  flex-basis: auto !important;
+  flex-grow: 0 !important;
+  height: 56px !important;
+  max-height: 56px !important;
+}
+
+/* Mirror the same constraint on the body row so both columns stay in sync */
+.ec-timeline .ec-body .ec-days:last-child {
+  flex-grow: 0 !important;
+  height: 56px !important;
+  max-height: 56px !important;
 }
 
 /* Allow event titles to wrap and take multiple lines in Month Grid view */
