@@ -583,8 +583,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
       activeProjects.flatMap(p => (p.service_orders || []).filter(os => os.status === 'approved').map(os => os.id))
     );
 
-    tasks.forEach(t => {
-      // Encontra a OS efetiva da tarefa (se for subtarefa, herda da tarefa pai se ela tiver)
+    const getEffectiveOsId = (t) => {
       let soId = t.service_order_id;
       if (!soId && t.parent_task_id) {
         const parent = taskMap.get(t.parent_task_id);
@@ -592,58 +591,128 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           soId = parent.service_order_id;
         }
       }
+      return soId;
+    };
 
+    const getTaskDates = (t) => {
+      const subtasks = tasks.filter(sub => sub.parent_task_id === t.id);
+      const isParent = subtasks.length > 0;
+
+      if (isParent) {
+        const scheduledSubtasks = subtasks.filter(sub => sub.start_date);
+        if (scheduledSubtasks.length > 0) {
+          let minStart = null;
+          let maxEnd = null;
+          scheduledSubtasks.forEach(sub => {
+            const dates = getTaskDates(sub);
+            if (dates) {
+              if (!minStart || dates.start < minStart) minStart = dates.start;
+              if (!maxEnd || dates.end > maxEnd) maxEnd = dates.end;
+            }
+          });
+          if (minStart && maxEnd) {
+            return { start: minStart, end: maxEnd, isParent: true };
+          }
+        }
+      }
+
+      let startStr = t.start_date;
+      let endStr = t.end_date;
+
+      if (!startStr && !endStr && t.due_date) {
+        const d = new Date(t.due_date);
+        d.setHours(d.getHours() - 1);
+        startStr = d.toISOString();
+        endStr = t.due_date;
+      }
+
+      if (startStr) {
+        const start = new Date(startStr);
+        let end;
+        if (endStr) {
+          end = new Date(endStr);
+        } else if (t.estimated_hours) {
+          end = new Date(start.getTime() + t.estimated_hours * 60 * 60 * 1000);
+        } else {
+          end = new Date(start.getTime() + 60 * 60 * 1000);
+        }
+        return { start, end, isParent: false };
+      }
+
+      return null;
+    };
+
+    tasks.forEach(t => {
+      const soId = getEffectiveOsId(t);
       if (!soId || !approvedOsIds.has(soId)) {
         return;
       }
 
-      // Verifica datas de execução
-      let startStr = t.start_date;
-      let endStr = t.end_date;
-
-      // Fallback: se tiver apenas due_date, inicia 1 hora antes do due_date e termina no due_date
-      if (!startStr && !endStr && t.due_date) {
-        endStr = t.due_date;
-        const d = new Date(t.due_date);
-        d.setHours(d.getHours() - 1);
-        startStr = d.toISOString();
-      }
-
-      if (startStr && endStr) {
+      const dates = getTaskDates(t);
+      if (dates) {
         const isSubtask = !!t.parent_task_id;
-        
-        // Estilo de cores baseado no status
-        let bgColor = '#FDE047'; // amarelo padrão do Freeela
+        const isParent = dates.isParent;
+
+        let bgColor = '#FDE047'; 
         let txtColor = '#78350F';
         let borderColor = '#F59E0B';
 
         if (t.status === 'done') {
-          bgColor = '#D1FAE5'; // verde suave
-          txtColor = '#065F46';
-          borderColor = '#A7F3D0';
+          if (isSubtask) {
+            bgColor = '#D1FAE5';
+            txtColor = '#065F46';
+            borderColor = '#A7F3D0';
+          } else {
+            bgColor = '#059669';
+            txtColor = '#FFFFFF';
+            borderColor = '#047857';
+          }
         } else if (t.status === 'doing') {
-          bgColor = '#DBEAFE'; // azul suave
-          txtColor = '#1E40AF';
-          borderColor = '#BFDBFE';
-        } else if (isSubtask) {
-          bgColor = '#FEF3C7'; // âmbar bem claro para subtarefas
-          txtColor = '#92400E';
-          borderColor = '#FCD34D';
+          if (isSubtask) {
+            bgColor = '#DBEAFE';
+            txtColor = '#1E40AF';
+            borderColor = '#BFDBFE';
+          } else {
+            bgColor = '#2563EB';
+            txtColor = '#FFFFFF';
+            borderColor = '#1D4ED8';
+          }
+        } else {
+          if (isSubtask) {
+            bgColor = '#FEF3C7';
+            txtColor = '#92400E';
+            borderColor = '#FCD34D';
+          } else {
+            bgColor = '#D97706';
+            txtColor = '#FFFFFF';
+            borderColor = '#B45309';
+          }
+        }
+
+        let finalStart = dates.start;
+        let finalEnd = dates.end;
+        if (isParent) {
+          const OFFSET_MS = 15 * 60 * 1000;
+          finalStart = new Date(dates.start.getTime() - OFFSET_MS);
+          finalEnd = new Date(dates.end.getTime() + OFFSET_MS);
         }
 
         eventsList.push({
           id: t.id,
           resourceIds: [soId],
-          start: new Date(startStr),
-          end: new Date(endStr),
+          start: finalStart,
+          end: finalEnd,
           title: t.title,
           editable: true,
+          startEditable: true,
+          durationEditable: !isParent,
           backgroundColor: bgColor,
           textColor: txtColor,
           borderColor: borderColor,
           extendedProps: {
             task: t,
-            isSubtask
+            isSubtask,
+            isParent
           }
         });
       }
@@ -666,7 +735,6 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
     today.setHours(10, 0, 0, 0);
     const endStr = today.toISOString();
 
-    // Encontra a OS
     let targetOsId = task.service_order_id;
     if (!targetOsId && task.parent_task_id) {
       const parent = tasks.find(t => t.id === task.parent_task_id);
@@ -694,12 +762,19 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
     const calculateSlotWidth = (viewType) => {
       if (viewType === 'resourceTimelineWeek' && calendarRef.current) {
         const containerWidth = calendarRef.current.clientWidth || 800;
-        const sidebarWidth = 240; // Fixed sidebar width
+        const sidebarWidth = 240; 
         const gridWidth = Math.max(0, containerWidth - sidebarWidth);
         const calculatedSlotWidth = gridWidth / 7;
         return calculatedSlotWidth > 40 ? calculatedSlotWidth : 72;
       }
-      return 72; // Default for day view
+      return 72; 
+    };
+
+    const getMidpointDateStr = (start, end) => {
+      if (!start || !end) return null;
+      const mid = new Date((start.getTime() + end.getTime()) / 2);
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${mid.getFullYear()}-${pad(mid.getMonth() + 1)}-${pad(mid.getDate())}`;
     };
 
     let ec;
@@ -724,17 +799,41 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
       slotMinTime: '06:00:00',
       slotMaxTime: '22:00:00',
       eventContent: (info) => {
-        return info.event.title;
+        const isSub = info.event.extendedProps?.isSubtask;
+        const isParent = info.event.extendedProps?.isParent;
+        
+        if (isSub) {
+          return {
+            html: `<div class="flex items-center h-full pl-2 border-l-2 border-brand-500/40 select-none">
+              <span class="text-[10px] font-medium leading-none truncate">${info.event.title}</span>
+            </div>`
+          };
+        }
+        if (isParent) {
+          return {
+            html: `<div class="flex items-center justify-between w-full h-full px-2.5 select-none">
+              <span class="text-[11px] font-bold leading-none truncate">${info.event.title}</span>
+              <span class="text-[9px] opacity-75 font-semibold bg-brand-900/10 px-1.5 py-0.5 rounded">Grupo</span>
+            </div>`
+          };
+        }
+        return {
+          html: `<div class="flex items-center h-full px-2 select-none">
+            <span class="text-[11px] font-semibold leading-none truncate">${info.event.title}</span>
+          </div>`
+        };
       },
       datesSet: (info) => {
-        currentDateRef.current = info.start;
+        const midDate = getMidpointDateStr(info.start, info.end);
+        currentDateRef.current = midDate;
         const viewType = info.view?.type || 'resourceTimelineDay';
         const newSlotWidth = calculateSlotWidth(viewType);
         
         optionsRef.current = { 
           ...optionsRef.current, 
           view: viewType, 
-          slotWidth: newSlotWidth 
+          slotWidth: newSlotWidth,
+          date: midDate
         };
         
         if (ec && typeof ec.$set === 'function') {
@@ -772,7 +871,7 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
         }
       },
       locale: 'pt-br',
-      firstDay: 1, // Segunda
+      firstDay: 1, 
       allDaySlot: false,
       resourceLabelContent: (info) => {
         const companyName = info.resource.companyName || info.resource.extendedProps?.companyName;
@@ -781,17 +880,18 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
           return {
             html: `<div class="flex flex-col py-0 leading-none">
               <span class="text-[9px] text-warm-500 font-semibold leading-none">${companyName}</span>
-              <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${osTitle}</span>
+              <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5 truncate" title="${osTitle}">${osTitle}</span>
             </div>`
           };
         }
+        
         if (info.resource.title) {
           const parts = info.resource.title.split(' - ');
           if (parts.length > 1) {
             return {
               html: `<div class="flex flex-col py-0 leading-none">
                 <span class="text-[9px] text-warm-500 font-semibold leading-none">${parts[0]}</span>
-                <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5">${parts.slice(1).join(' - ')}</span>
+                <span class="text-[11px] text-warm-900 font-bold leading-tight mt-0.5 truncate" title="${parts.slice(1).join(' - ')}">${parts.slice(1).join(' - ')}</span>
               </div>`
             };
           }
@@ -812,18 +912,30 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
 
-        // Bloquear transferência de tarefas para outras ordens de serviço
-        if (info.newResource) {
+        const oldResourceId = info.oldEvent.resourceIds ? info.oldEvent.resourceIds[0] : undefined;
+        const newResourceId = info.newResource ? info.newResource.id : (info.event.resourceIds ? info.event.resourceIds[0] : undefined);
+        
+        if (newResourceId !== oldResourceId) {
           alert("Não é permitido transferir tarefas para outra Ordem de Serviço.");
           info.revert();
           return;
         }
 
+        const oldStart = new Date(task.start_date || task.due_date || new Date());
+        let oldEnd;
+        if (task.end_date) {
+          oldEnd = new Date(task.end_date);
+        } else if (task.estimated_hours) {
+          oldEnd = new Date(oldStart.getTime() + task.estimated_hours * 60 * 60 * 1000);
+        } else {
+          oldEnd = new Date(oldStart.getTime() + 60 * 60 * 1000);
+        }
+        const durationMs = oldEnd.getTime() - oldStart.getTime();
+
         const newStart = info.event.start.toISOString();
-        const newEnd = info.event.end ? info.event.end.toISOString() : newStart;
-        const newResourceId = info.newResource ? info.newResource.id : (info.event.resourceIds ? info.event.resourceIds[0] : undefined);
+        const newEnd = new Date(info.event.start.getTime() + durationMs).toISOString();
         
-        onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd, newResourceId).catch(() => {
+        onUpdateTaskExecutionDates(taskId, task.project_id, newStart, newEnd).catch(() => {
           info.revert();
         });
       },
@@ -881,8 +993,6 @@ const CalendarAgenda = ({ tasks, activeProjects, onUpdateTaskExecutionDates, onT
 
     optionsRef.current = updatedOptions;
 
-    // rAF garante que o Svelte termine o ciclo de mount/update antes do $set
-    // evitando a janela onde .ec-day existe no DOM mas ainda não tem payload
     const raf = requestAnimationFrame(() => {
       if (!isDraggingRef.current && instRef.current) {
         instRef.current.$set({ options: optionsRef.current });
@@ -1677,35 +1787,141 @@ export default function OverviewView({ projects, userId, authUser, onUpdateTaskS
   };
 
   const handleUpdateTaskExecutionDates = async (taskId, projectId, startDateStr, endDateStr, newServiceOrderId = undefined) => {
-    const startDate = startDateStr ? new Date(startDateStr).toISOString() : null;
-    const endDate = endDateStr ? new Date(endDateStr).toISOString() : null;
-    
-    setLocalTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        const updated = { ...t, start_date: startDate, end_date: endDate };
-        if (newServiceOrderId !== undefined) {
-          updated.service_order_id = newServiceOrderId === 'sem-os' ? null : newServiceOrderId;
+    const task = localTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newStart = startDateStr ? new Date(startDateStr).toISOString() : null;
+    const newEnd = endDateStr ? new Date(endDateStr).toISOString() : null;
+
+    // Verificar se a tarefa é pai (possui subtarefas no localTasks)
+    const subtasks = localTasks.filter(t => t.parent_task_id === taskId);
+    const isParent = subtasks.length > 0;
+
+    let updatesList = [];
+
+    if (isParent) {
+      // Obter o start_date original do pai (ou calcular a partir das subtarefas)
+      let oldStartMs;
+      if (task.start_date) {
+        oldStartMs = new Date(task.start_date).getTime();
+      } else {
+        const scheduledSubtasks = subtasks.filter(sub => sub.start_date);
+        if (scheduledSubtasks.length > 0) {
+          oldStartMs = Math.min(...scheduledSubtasks.map(sub => new Date(sub.start_date).getTime()));
+        } else {
+          oldStartMs = new Date().getTime();
         }
-        return updated;
+      }
+      
+      const newStartMs = new Date(newStart).getTime();
+      const offsetMs = newStartMs - oldStartMs;
+
+      if (offsetMs !== 0) {
+        // Deslocar todas as subtarefas
+        subtasks.forEach(sub => {
+          if (sub.start_date) {
+            const subStart = new Date(new Date(sub.start_date).getTime() + offsetMs).toISOString();
+            const subEnd = sub.end_date 
+              ? new Date(new Date(sub.end_date).getTime() + offsetMs).toISOString()
+              : new Date(new Date(subStart).getTime() + (sub.estimated_hours ? sub.estimated_hours * 3600000 : 3600000)).toISOString();
+            
+            updatesList.push({
+              id: sub.id,
+              start_date: subStart,
+              end_date: subEnd
+            });
+          }
+        });
+      }
+
+      // Atualizar o pai também
+      updatesList.push({
+        id: taskId,
+        start_date: newStart,
+        end_date: newEnd,
+        service_order_id: newServiceOrderId !== undefined ? (newServiceOrderId === 'sem-os' ? null : newServiceOrderId) : task.service_order_id
+      });
+
+    } else if (task.parent_task_id) {
+      // É uma subtarefa. Atualiza suas datas
+      updatesList.push({
+        id: taskId,
+        start_date: newStart,
+        end_date: newEnd,
+        service_order_id: newServiceOrderId !== undefined ? (newServiceOrderId === 'sem-os' ? null : newServiceOrderId) : task.service_order_id
+      });
+
+      // Encontrar a tarefa pai
+      const parentTask = localTasks.find(t => t.id === task.parent_task_id);
+      if (parentTask) {
+        const siblingSubtasks = localTasks.filter(t => t.parent_task_id === parentTask.id && t.id !== taskId);
+        
+        let minStartMs = new Date(newStart).getTime();
+        let maxEndMs = newEnd 
+          ? new Date(newEnd).getTime() 
+          : new Date(newStart).getTime() + (task.estimated_hours ? task.estimated_hours * 3600000 : 3600000);
+
+        siblingSubtasks.forEach(sub => {
+          if (sub.start_date) {
+            const subStartMs = new Date(sub.start_date).getTime();
+            const subEndMs = sub.end_date
+              ? new Date(sub.end_date).getTime()
+              : subStartMs + (sub.estimated_hours ? sub.estimated_hours * 3600000 : 3600000);
+
+            if (subStartMs < minStartMs) minStartMs = subStartMs;
+            if (subEndMs > maxEndMs) maxEndMs = subEndMs;
+          }
+        });
+
+        const parentStart = new Date(minStartMs).toISOString();
+        const parentEnd = new Date(maxEndMs).toISOString();
+
+        if (parentStart !== parentTask.start_date || parentEnd !== parentTask.end_date) {
+          updatesList.push({
+            id: parentTask.id,
+            start_date: parentStart,
+            end_date: parentEnd
+          });
+        }
+      }
+    } else {
+      // Tarefa independente padrão
+      updatesList.push({
+        id: taskId,
+        start_date: newStart,
+        end_date: newEnd,
+        service_order_id: newServiceOrderId !== undefined ? (newServiceOrderId === 'sem-os' ? null : newServiceOrderId) : task.service_order_id
+      });
+    }
+
+    // Aplicar atualizações no estado local instantaneamente
+    setLocalTasks(prev => prev.map(t => {
+      const dbUpdate = updatesList.find(up => up.id === t.id);
+      if (dbUpdate) {
+        return {
+          ...t,
+          start_date: dbUpdate.start_date,
+          end_date: dbUpdate.end_date,
+          service_order_id: dbUpdate.service_order_id !== undefined ? dbUpdate.service_order_id : t.service_order_id
+        };
       }
       return t;
     }));
-    
-    try {
-      const updates = { start_date: startDate, end_date: endDate };
-      if (newServiceOrderId !== undefined) {
-        updates.service_order_id = newServiceOrderId === 'sem-os' ? null : newServiceOrderId;
-      }
-      
-      const { error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', taskId);
 
-      if (error) throw error;
-      onUpdateTaskStatus?.(taskId, projectId, undefined, updates);
+    // Persistir atualizações no banco de dados
+    try {
+      for (const update of updatesList) {
+        const { id, ...fields } = update;
+        const { error } = await supabase
+          .from('tasks')
+          .update(fields)
+          .eq('id', id);
+
+        if (error) throw error;
+        onUpdateTaskStatus?.(id, projectId, undefined, fields);
+      }
     } catch (err) {
-      console.error('Erro ao atualizar execução da tarefa:', err);
+      console.error('Erro ao atualizar execução da(s) tarefa(s):', err);
       throw err;
     }
   };
